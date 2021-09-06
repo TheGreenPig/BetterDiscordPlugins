@@ -1,3 +1,3 @@
 ## FileViewer
-Pdf Viewer lets you view files directly in discord.
+File Viewer lets you view files directly in discord.
 
