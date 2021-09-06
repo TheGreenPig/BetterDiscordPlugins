@@ -47,14 +47,20 @@ module.exports = (() => {
 			const {
 				Tooltip
 			} = { ...Api, ...BdApi };
+
+			let pdfCSS = [
+				`.hidePdf {`,
+				`	display: none;`,
+				`}`,
+			].join("\n")
 			return class PdfViwer extends Plugin {
+				start() {
+					BdApi.injectCSS("pdfCSS", pdfCSS);
+				}
+				stop() {
+					BdApi.clearCSS("pdfCSS");
+				}
 				addPdfButton(attachment) {
-					const randomStr = attachment.getAttribute("pdfid");
-					const timeStr = attachment.getAttribute("pdftime");
-
-					let pdfDisplay = `pdfDisplay-${timeStr}-${randomStr}`;
-					let showPdf = `showPdf-${timeStr}-${randomStr}`;
-
 					let pdfButton = document.createElement("a");
 					pdfButton.className = "anchor-3Z-8Bb anchorUnderlineOnHover-2ESHQB downloadWrapper-vhAtLx"
 					pdfButton.innerHTML = `<svg class="downloadButton-23tKQp" aria-hidden="false" width="24" height="24" viewBox="0 0 24 24">
@@ -62,18 +68,24 @@ module.exports = (() => {
 											</path>
 											</svg>`;
 
-					let tooltip = new Tooltip(pdfButton, "Click to view pdf.");
+					let tooltip;
 					pdfButton.addEventListener("click", () => {
-						if (attachment.classList.contains(showPdf)) {
-							BdApi.clearCSS(pdfDisplay)
-							BdApi.injectCSS(pdfDisplay, `.${pdfDisplay} {display:none;}`);
-							tooltip = new Tooltip(pdfButton, "Click to view pdf.")
-							attachment.classList.remove(showPdf);
+						if (attachment.getAttribute("displayingpdf") === "true") {
+							//hide pdf
+							console.log("hide pdf")
+							tooltip = new Tooltip(pdfButton, "Click to view pdf.");
+							attachment.setAttribute("displayingpdf", "false");
+
+							attachment.querySelector(".pdfEmbed").classList.add("hidePdf");
+							attachment.querySelector(".pdfInfo").classList.add("hidePdf");
 						} else {
-							BdApi.clearCSS(pdfDisplay)
-							BdApi.injectCSS(pdfDisplay, `.${showPdf} { width: 140% }`);
-							tooltip = new Tooltip(pdfButton, "Click to hide pdf.")
-							attachment.classList.add(showPdf);
+							//show pdf 
+							console.log("show pdf")
+							tooltip = new Tooltip(pdfButton, "Click to hide pdf.");
+							attachment.setAttribute("displayingpdf", "true");
+
+							attachment.querySelector(".pdfEmbed").classList.remove("hidePdf");
+							attachment.querySelector(".pdfInfo").classList.remove("hidePdf");
 						}
 
 					});
@@ -88,27 +100,31 @@ module.exports = (() => {
 					attachment.classList.add("displayPdfButton");
 				}
 				showPdf(attachment, url) {
-					const randomStr = Math.floor(Math.random() * 1e16).toString(36).substring(0,8);
-					const timeStr = Date.now().toString(36).substring(0,8);
 
+					let googleUrl = `https://drive.google.com/viewerng/viewer?embedded=true&url=${url}`
 					let embed = document.createElement("embed");
-					embed.className = `imageWrapper-2p5ogY imageZoom-1n-ADA clickable-3Ya1ho embedMedia-1guQoW embedImage-2W1cML pdfDisplay-${timeStr}-${randomStr}`;
-					embed.setAttribute("src", `https://drive.google.com/viewerng/viewer?embedded=true&url=${url}`);
+					embed.className = `imageWrapper-2p5ogY imageZoom-1n-ADA clickable-3Ya1ho embedMedia-1guQoW embedImage-2W1cML pdfEmbed hidePdf`;
+					embed.setAttribute("src", googleUrl);
 					embed.setAttribute("frameborder", `0`);
 					embed.setAttribute("type", "application/pdf")
 					embed.setAttribute("width", "500rem")
 					embed.setAttribute("height", "600rem")
-					BdApi.injectCSS(`pdfDisplay-${timeStr}-${randomStr}`, `.pdfDisplay-${timeStr}-${randomStr} {display:none;}`);
-					attachment.setAttribute("pdfid", randomStr)
-					attachment.setAttribute("pdftime", timeStr)
+					attachment.setAttribute("displayingpdf", "false")
+
+					let infoText = document.createElement("div"); 
+					infoText.className = `colorStandard-2KCXvj size14-e6ZScH description-3_Ncsb formText-3fs7AJ modeDefault-3a2Ph1 pdfInfo hidePdf`;
+					infoText.innerHTML = `If nothing is getting displayed, click 
+										<a class="anchor-3Z-8Bb anchorUnderlineOnHover-2ESHQB" title="${googleUrl}" rel="noreferrer noopener" target="_blank" role="button" tabindex="0" href="${googleUrl}">here</a> or wait a little.`
+					attachment.appendChild(infoText);
 					attachment.appendChild(embed);
+
 				}
 				observer() {
 					let allAttachments = document.querySelectorAll(".messageAttachment-1aDidq");
 					if (allAttachments.length > 0) {
 						for (let attachment of allAttachments) {
 							let url = attachment.querySelector("div > a")?.getAttribute("href");
-							if (url && url.endsWith(".pdf")) {
+							if (url && /\.(pdf|doc|docx|xlsx|pptx)$/g.test(url)) {
 								if (!attachment.classList.contains("displayPdfButton")) {
 									this.showPdf(attachment, url)
 									this.addPdfButton(attachment);
