@@ -2,7 +2,7 @@
  * @name CopyWithFormatting
  * @author AGreenPig
  * @version 0.0.1
- * @updateUrl https://raw.githubusercontent.com/TheGreenPig/BetterDiscordPlugins/main/FileViewer/FileViewer.plugin.js
+ * @updateUrl https://raw.githubusercontent.com/TheGreenPig/BetterDiscordPlugins/main/CopyWithFormatting/CopyWithFormatting.plugin.js
  * @authorLink https://github.com/TheGreenPig
  * @source https://github.com/TheGreenPig/BetterDiscordPlugins/main/FileViewer/FileViewer.plugin.js
  */
@@ -19,7 +19,7 @@ module.exports = (() => {
 			}],
 			"version": "0.0.1",
 			"description": "Right click to copy the message with correct discord formatting.",
-			"github_raw": ""
+			"github_raw": "https://raw.githubusercontent.com/TheGreenPig/BetterDiscordPlugins/main/CopyWithFormatting/CopyWithFormatting.plugin.js"
 		},
 	}
 	return !global.ZeresPluginLibrary ? class {
@@ -51,6 +51,7 @@ module.exports = (() => {
 				start() {
 					const MenuItem = BdApi.findModuleByProps("MenuItem");
 					const MessageContextMenu = BdApi.findModule((m) => m?.default?.displayName === "MessageContextMenu");
+					//Credit to p0rtL#6592 for the snippet
 					BdApi.Patcher.after("MessageContextMenuPatch", MessageContextMenu, "default", (that, args, value) => {
 						const [props] = args;
 						let message = props.message
