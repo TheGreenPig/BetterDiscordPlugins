@@ -1,2 +1,2 @@
 ## CopyWithFormatting
-A tiny plugin that lets you copy a message with the correct discord formatting (Like bold, italic etc.) by rightlicking a message and choosing the option.
+A tiny plugin that lets you copy a message with the correct discord formatting (Like bold, italic etc.) by rightlicking a message and choosing the option. It essntially does the same thing as DevilBros [CopyRawMessage](https://github.com/mwittrien/BetterDiscordAddons/tree/master/Plugins/CopyRawMessage/), I just wanted to try to do it on my own...
