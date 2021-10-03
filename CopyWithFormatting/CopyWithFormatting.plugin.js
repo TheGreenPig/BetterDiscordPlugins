@@ -4,7 +4,7 @@
  * @version 0.0.2
  * @updateUrl https://raw.githubusercontent.com/TheGreenPig/BetterDiscordPlugins/main/CopyWithFormatting/CopyWithFormatting.plugin.js
  * @authorLink https://github.com/TheGreenPig
- * @source https://github.com/TheGreenPig/BetterDiscordPlugins/main/FileViewer/FileViewer.plugin.js
+ * @source https://github.com/TheGreenPig/BetterDiscordPlugins/main/CopyWithFormatting/CopyWithFormatting.plugin.js
  */
 
 const { appendFile } = require("fs");
