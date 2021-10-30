@@ -14,7 +14,7 @@ const config = {
 			"github_username": "TheGreenPig"
 		}],
 		"version": "1.0.0",
-		"description": "Turn off every Theme and Plugin with a shortcut.",
+		"description": "Display word definitons by Urban Dictionary.",
 		"github_raw": "https://raw.githubusercontent.com/TheGreenPig/BetterDiscordPlugins/main/UrbanDictionary/UrbanDictionary.plugin.js"
 	},
 }
