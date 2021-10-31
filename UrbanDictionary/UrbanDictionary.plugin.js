@@ -14,7 +14,7 @@ const config = {
 			"github_username": "TheGreenPig"
 		}],
 		"version": "1.0.1",
-		"description": "Display word definitons by Urban Dictionary. Select a word, right click and press Urban Dictionary to see its definition!",
+		"description": "Display word definitions  by Urban Dictionary. Select a word, right click and press Urban Dictionary to see its definition!",
 		"github_raw": "https://raw.githubusercontent.com/TheGreenPig/BetterDiscordPlugins/main/UrbanDictionary/UrbanDictionary.plugin.js"
 	},
 }
