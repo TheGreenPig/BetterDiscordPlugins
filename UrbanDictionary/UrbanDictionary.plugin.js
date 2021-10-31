@@ -13,7 +13,7 @@ const config = {
 			"discord_id": "427179231164760066",
 			"github_username": "TheGreenPig"
 		}],
-		"version": "1.0.0",
+		"version": "1.0.1",
 		"description": "Display word definitons by Urban Dictionary.",
 		"github_raw": "https://raw.githubusercontent.com/TheGreenPig/BetterDiscordPlugins/main/UrbanDictionary/UrbanDictionary.plugin.js"
 	},
@@ -39,11 +39,58 @@ module.exports = !global.ZeresPluginLibrary ? class {
 	start() { }
 	stop() { }
 } : (([Plugin, Library]) => {
-
+	const customCSS = `
+	.UrbanD-Word {
+		clear: left;
+		color: var(--header-primary);
+		font-size: 1.3em;
+		text-align: center;
+		font-weight: bold;
+		text-decoration: underline;
+	}
+	.UrbanD-Title {
+		font-weight: 600;
+		color: var(--text-normal);
+		font-size: 1.1em;
+	}
+	.UrbanD-Text {
+		color: var(--text-normal);
+		padding-bottom: 15px;
+	}
+	.UrbanD-Image {
+		float: left;
+		margin-bottom: 30;
+	}
+	.UrbanD-Info {
+		color: var(--text-normal);
+		font-size: 0.9em;
+		padding-top: 15px;
+	}
+	.UrbanD-Likes {
+		font-weight: bold;
+	}
+	.UrbanD-Author {
+		font-weight: bold;
+	}
+	.UrbanD-Date {
+		color: var(--text-muted);
+		font-size: 0.8em;
+	}
+	.UrbanD-Wrapper {
+		-webkit-user-select: text;
+	}
+	.UrbanD-Definition {
+		background-color: var(--background-secondary);
+		border-radius: 15px;
+		padding: 10px;
+		margin-top: 20px;
+	}
+	`
 	const { Toasts, WebpackModules, DCM, Patcher, React } = { ...Library, ...BdApi };
 	const item = WebpackModules.getModule(m => m?.default?.displayName === "MessageContextMenu")
 	return class UrbanDictionary extends Plugin {
 		async onStart() {
+			BdApi.injectCSS("UrbanDictionary", customCSS)
 			Patcher.after("UrbanDictionary", item, "default", (_, args, component) => {
 				let props = args[0]
 				let message = props.message
@@ -58,14 +105,42 @@ module.exports = !global.ZeresPluginLibrary ? class {
 							fetch(`https://api.urbandictionary.com/v0/define?term=${word.toLocaleLowerCase()}`)
 								.then(data => { return data.json() })
 								.then(res => {
-									if(res?.list?.length===0) { console.log(`%c"${word}" was not found in Urban Dictionary!`, `color:red;`);return;}
-									let definition = res.list[0].definition.replace(/[\[\]]/g, "");
-									let example = res.list[0].example.replace(/[\[\]]/g, "");
-									let likes =  res.list[0].thumbs_up.toString();
-									let author = res.list[0].author;
-									let date = res.list[0].written_on;
+									if(res?.list?.length===0) { BdApi.alert("No definiton found!", `Couldn't find "${word}" on Urban dictionary.`);return;}
 
-									console.log(`%c${word}%c \n\n%cDefinition:%c\n${definition}\n\n%cExample:%c\n${example}\n\nLikes: ${likes}, by %c${author}%c\n${date}`, `font-size: 1.2em; font-weight: bold; text-decoration: underline`, ``, `font-weight: bold; color:red;`, ``, `font-weight: bold;color:red;`, ``, `color: green;`, ``)
+									let definitionElement = [];
+									res.list.sort(function(a, b) { 
+										return b.thumbs_up-a.thumbs_up;
+									})
+									for(let i=0; i<res.list.length;i++) {
+										let definitionBlob = res.list[i];
+
+										let definition = definitionBlob.definition.replace(/[\[\]]/g, "");
+										let example = definitionBlob.example.replace(/[\[\]]/g, "");
+										let likes =  definitionBlob.thumbs_up.toString();
+										let dislikes =  definitionBlob.thumbs_down.toString();
+										let author = definitionBlob.author;
+										let date = new Date(definitionBlob.written_on).toLocaleString();
+
+										definitionElement.push(React.createElement("div", {class: "UrbanD-Definition"},  
+											React.createElement("div", {class: "UrbanD-Title"}, "Definition:"),
+											React.createElement("div", {class: "UrbanD-Text"}, definition),
+											React.createElement("div", {class: "UrbanD-Title"}, "Example:"),
+											React.createElement("div", {class: "UrbanD-Text"}, example),
+											React.createElement("div", {class: "UrbanD-Info"}, 
+												"Likes: ", React.createElement("span", {class: "UrbanD-Likes"}, likes), 
+												", Dislikes: ",React.createElement("span", {class: "UrbanD-Likes"}, dislikes),
+												", written by ", React.createElement("span", {class: "UrbanD-Author"}, author)),
+											React.createElement("div", {class: "UrbanD-Date"}, date),
+										))
+									}
+
+									BdApi.alert("", 
+										React.createElement("div", {class: "UrbanD-Wrapper"}, 
+											React.createElement("a", {href: "https://www.urbandictionary.com/", target: "_blank"}, React.createElement("img", {class: "UrbanD-Image", src: "https://raw.githubusercontent.com/TheGreenPig/BetterDiscordPlugins/main/UrbanDictionary/UD_logo.svg", width:"100"}), ),
+											React.createElement("a", {href: `https://www.urbandictionary.com/define.php?term=${word}`, target: "_blank"}, React.createElement("div", {class: "UrbanD-Word"}, word)),
+											definitionElement
+										)
+									)
 								})
 						}
 					})
@@ -76,6 +151,7 @@ module.exports = !global.ZeresPluginLibrary ? class {
 
 		}
 		onStop() {
+			BdApi.clearCSS("UrbanDictionary")
 			Patcher.unpatchAll("UrbanDictionary");
 		}
 
