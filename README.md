@@ -1,2 +1,2 @@
 ## Better Discord Plugins
-All my smaller better discord Projects. For bigger ones (like [Apate](https://github.com/TheGreenPig/Apate)) have their own Repository.
+All my smaller better discord Projects. Bigger ones (like [Apate](https://github.com/TheGreenPig/Apate)) have their own Repository.
