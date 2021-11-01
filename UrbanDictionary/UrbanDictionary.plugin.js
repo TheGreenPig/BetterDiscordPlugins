@@ -13,7 +13,7 @@ const config = {
 			"discord_id": "427179231164760066",
 			"github_username": "TheGreenPig"
 		}],
-		"version": "1.0.1",
+		"version": "1.0.2",
 		"description": "Display word definitions  by Urban Dictionary. Select a word, right click and press Urban Dictionary to see its definition!",
 		"github_raw": "https://raw.githubusercontent.com/TheGreenPig/BetterDiscordPlugins/main/UrbanDictionary/UrbanDictionary.plugin.js"
 	},
@@ -87,27 +87,49 @@ module.exports = !global.ZeresPluginLibrary ? class {
 	}
 	`
 	const { Toasts, WebpackModules, DCM, Patcher, React, Settings } = { ...Library, ...BdApi };
-	const { SettingPanel, Switch, Slider } = Settings;
+	const { SettingPanel, Switch, Slider, RadioGroup } = Settings;
 
 	const MessageContextMenu = WebpackModules.getModule(m => m?.default?.displayName === "MessageContextMenu")
 	const SlateTextAreaContextMenu = WebpackModules.getModule(m => m?.default?.displayName === "SlateTextAreaContextMenu")
 
+	let profanityArray = [];
+
+	const profanityOptions = [
+		{
+			name: 'None',
+			desc: 'No profanity filter.',
+			value: 0
+		},
+		{
+			name: 'Small',
+			desc: 'About 450 words from https://raw.githubusercontent.com/web-mech/badwords/master/lib/lang.json',
+			value: 1
+		},
+		{
+			name: 'Large',
+			desc: '(Recommended) About 2800 words from https://raw.githubusercontent.com/zacanger/profane-words/master/words.json',
+			value: 2
+		},
+		{
+			name: 'External Api',
+			desc: `Uses the https://www.purgomalum.com/ api. Probably the best filter, but is not local and rather slow. This filter is not local, I do not have any control over this Api, use it carefully.`,
+			value: 3
+		}
+	]
 	return class UrbanDictionary extends Plugin {
 		async onStart() {
-			this.settings = this.loadSettings({ profanity: true, showAmount: 4 });
+			this.settings = this.loadSettings({ profanity: true, showAmount: 4, filter: 2 });
+			profanityArray = await this.updateProfanityArray(this.settings.filter);
 
-			BdApi.injectCSS("UrbanDictionary", customCSS)
+			BdApi.injectCSS(config.info.name, customCSS)
 
-
-			Patcher.after("UrbanDictionary", MessageContextMenu, "default", (_, __, ret) => {
+			Patcher.after(config.info.name, MessageContextMenu, "default", (_, __, ret) => {
 				ret.props.children.push(this.getContextMenuItem())
 			})
 
-
-			Patcher.after("UrbanDictionary", SlateTextAreaContextMenu, "default", (_, __, ret) => {
+			Patcher.after(config.info.name, SlateTextAreaContextMenu, "default", (_, __, ret) => {
 				ret.props.children.push(this.getContextMenuItem())
 			})
-
 		}
 		getContextMenuItem() {
 			let selection = window.getSelection().toString().trim();
@@ -129,7 +151,7 @@ module.exports = !global.ZeresPluginLibrary ? class {
 
 		}
 		async processDefinitions(word, res) {
-			if (this.settings.profanity) {
+			if (this.settings.filter !== 0) {
 				let wordHasProfanity = await this.containsProfanity(word);
 				if (wordHasProfanity) {
 					BdApi.alert("That's a bad word!", "Turn off your profanity filter to view this words definition!");
@@ -155,7 +177,7 @@ module.exports = !global.ZeresPluginLibrary ? class {
 				let dislikes = definitionBlob.thumbs_down.toString();
 				let author = definitionBlob.author;
 				let date = new Date(definitionBlob.written_on).toLocaleString();
-				if (this.settings.profanity) {
+				if (this.settings.filter !== 0) {
 					definition = await this.filterText(definition);
 					example = await this.filterText(example);
 				}
@@ -182,39 +204,81 @@ module.exports = !global.ZeresPluginLibrary ? class {
 			)
 		}
 		async containsProfanity(text) {
-			return fetch(`https://www.purgomalum.com/service/containsprofanity?text=${text}`)
+			if (this.settings.filter === 3) {
+				return await fetch(`https://www.purgomalum.com/service/containsprofanity?text=${text}`)
+					.then(data => {
+						return data.json()
+					})
+					.then(res => {
+						return res;
+					})
+			}
+
+			text = text.toLowerCase()
+			let wordArray = text.match(/\w+/gi);
+			let hasProfanity = false;
+			wordArray.forEach(word => {
+				if(profanityArray.includes(word)) {
+					hasProfanity = true;
+				}
+			})
+			return hasProfanity;
+		}
+		async filterText(text) {
+			if (this.settings.filter === 3) {
+				return await fetch(`https://www.purgomalum.com/service/plain?text=${text}`)
+					.then(data => {
+						return data.text()
+					})
+					.then(res => {
+						return res;
+					})
+			}
+			let wordArray = text.match(/\w+/gi);
+			let newText = text;
+			wordArray.forEach(word => {
+				if(profanityArray.includes(word.toLowerCase())) {
+					newText = newText.replace(word, "*".repeat(word.length));
+				}
+			})
+			return newText;
+		}
+		async updateProfanityArray(option) {
+			let url;
+			switch (option) {
+				case 3: case 0:
+					profanityArray = [];
+					return;
+				case 1:
+					url = "https://raw.githubusercontent.com/web-mech/badwords/master/lib/lang.json";
+					break;
+				case 2:
+					url = "https://raw.githubusercontent.com/zacanger/profane-words/master/words.json";
+					break;
+			}
+			fetch(url)
 				.then(data => {
 					return data.json()
 				})
 				.then(res => {
-					return res;
+					profanityArray = res.words ? res.words : res;
 				})
-
-		}
-		async filterText(text) {
-			return fetch(`https://www.purgomalum.com/service/plain?text=${text}`)
-				.then(data => {
-					return data.text()
-				})
-				.then(res => {
-					return res;
-				})
-
 		}
 		getSettingsPanel() {
 			return SettingPanel.build(() => this.saveSettings(this.settings),
-				new Switch("Profanity Filter", "Censor definitions that contain profanity. This filter will not perfect, you might still encounter definitions or examples that are NSWF. The filer used is `https://www.purgomalum.com/`.", this.settings.profanity, (i) => {
-					this.settings.profanity = i;
+				new RadioGroup('Filter', `Choose if you want to turn on a profanity filter. The pop-up might take longer until it's displayed. Not all filters are perfect, you might still see text that is NSFW.`, this.settings.filter || 0, profanityOptions, (i) => {
+					this.settings.filter = i;
+					profanityArray = this.updateProfanityArray(i);
 				}),
 				new Slider("Amount of definitions", "Defines how many definitions of the word you want to get displayed. More definitions will take longer to load (especially with the Profanity Filter turned on).", 1, 10, this.settings.showAmount, (i) => {
 					this.settings.showAmount = i;
-				}, { markers: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10], stickToMarkers: true })
+				}, { markers: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10], stickToMarkers: true }),
 			)
 
 		}
 		onStop() {
-			BdApi.clearCSS("UrbanDictionary")
-			Patcher.unpatchAll("UrbanDictionary");
+			BdApi.clearCSS(config.info.name)
+			Patcher.unpatchAll(config.info.name);
 		}
 
 	}
