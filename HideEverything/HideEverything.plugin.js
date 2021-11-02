@@ -54,19 +54,22 @@ module.exports = (() => {
 			const KeybindRecorder = BdApi.findModuleByDisplayName("KeybindRecorder");
 
 			let pressing = [];
+			let showToasts;
 			return class HideEverything extends Plugin {
 				start() {
 					let hidingEverything = false;
 					document.onkeydown = (evt) => {
-						if(!pressing.includes(evt.keyCode)) {
+						if (!pressing.includes(evt.keyCode)) {
 							pressing.push(evt.keyCode)
-						
-							if (this.filterKeybind(this.settings.shortcut).every(e=> pressing.includes(e))) {
+
+							if (this.filterKeybind(this.settings.shortcut).every(e => pressing.includes(e))) {
 								if (hidingEverything) {
 									Logger.log("Hide everything!")
 									let skipPluginArray = [];
+
+									this.turnOffToasts()
 									Plugins.getAll().forEach(plugin => {
-										if(!Plugins.isEnabled(plugin.id)) {
+										if (!Plugins.isEnabled(plugin.id)) {
 											skipPluginArray.push(plugin.id)
 										}
 										if (plugin.id !== config.info.name) {
@@ -75,21 +78,29 @@ module.exports = (() => {
 									});
 									let skipThemeArray = [];
 									Themes.getAll().forEach(theme => {
-										if(!Themes.isEnabled(theme.id)) {
+										if (!Themes.isEnabled(theme.id)) {
 											skipThemeArray.push(theme.id)
 										}
 										Themes.disable(theme.id);
 									});
-									
-									BdApi.saveData("HideEverything", "SkipPlugins", skipPluginArray)
-									BdApi.saveData("HideEverything", "SkipThemes", skipThemeArray)
+									this.turnOnToasts();
+
+									//make get customcss at fixed position, otherwhise search...
+									let usingCustomCss = BdApi.isSettingEnabled("settings", "customcss", "customcss");
+									BdApi.saveData(config.info.name, "SkipCustomCss", !usingCustomCss);
+									BdApi.disableSetting("settings", "customcss", "customcss")
+
+									BdApi.saveData(config.info.name, "SkipPlugins", skipPluginArray)
+									BdApi.saveData(config.info.name, "SkipThemes", skipThemeArray)
+
 									hidingEverything = false;
 								} else {
 									Logger.log("Reveal everything!")
-									let skipPluginArray = BdApi.loadData("HideEverything", "SkipPlugins")
-									let skipThemeArray = BdApi.loadData("HideEverything", "SkipThemes")
+									let skipPluginArray = BdApi.loadData(config.info.name, "SkipPlugins")
+									let skipThemeArray = BdApi.loadData(config.info.name, "SkipThemes")
+									let skipCustomCss = BdApi.loadData(config.info.name, "SkipCustomCss")
 
-	
+									this.turnOffToasts();
 									Plugins.getAll().forEach(plugin => {
 										if (!skipPluginArray.includes(plugin.id)) {
 											Plugins.enable(plugin.id)
@@ -100,12 +111,16 @@ module.exports = (() => {
 											Themes.enable(theme.id)
 										}
 									});
+									if(!skipCustomCss) {
+										BdApi.enableSetting("settings", "customcss", "customcss")
+									}
+									this.turnOnToasts()
 									hidingEverything = true;
 								}
 							}
 						}
 					}
-					document.onkeyup = (evt) =>{
+					document.onkeyup = (evt) => {
 						pressing.splice(pressing.indexOf(evt.keyCode), 1);
 					};
 					this.settings = this.loadSettings({ shortcut: [[0, 162], [0, 68]] })
@@ -125,6 +140,25 @@ module.exports = (() => {
 							}
 						}))
 
+				}
+				turnOffToasts() {
+					Logger.log("Turning off Toasts");
+					//Set default
+					showToasts = BdApi.isSettingEnabled("settings", "general", "showToasts");
+					//For BDFDB
+					BdApi.injectCSS(config.info.name + "-NoToasts", `.${BDFDB.disCN.toasts} {display:none;}`)
+					if (showToasts) {
+						BdApi.disableSetting("settings", "general", "showToasts");
+					}
+				}
+				turnOnToasts() {
+					Logger.log("Turning on Toasts");
+
+					//For BDFDB
+					BdApi.clearCSS(config.info.name + "-NoToasts")
+					if (showToasts) {
+						BdApi.enableSetting("settings", "general", "showToasts");
+					}
 				}
 
 				//I stole this directly from https://github.com/Farcrada/DiscordPlugins/blob/master/Hide-Channels/HideChannels.plugin.js 
