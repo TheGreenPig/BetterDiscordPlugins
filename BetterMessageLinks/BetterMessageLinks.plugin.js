@@ -50,8 +50,15 @@ module.exports = !global.ZeresPluginLibrary ? class {
 } : (([Plugin, Library]) => {
 	//Custom css
 	const customCSS = `
-
+		.betterMessageLinks-Tooltip {
+			white-space: nowrap;
+			max-width: fit-content;
+		}
 	`
+	const defaultSettings = {
+		messageReplaceText: "<Message>",
+		previewMessageLength: 40,
+	};
 
 	//Settings and imports
 	const { Toasts, WebpackModules, DCM, Patcher, React, Settings } = { ...Library, ...BdApi };
@@ -60,34 +67,86 @@ module.exports = !global.ZeresPluginLibrary ? class {
 	//Modules
 	const MessageContent = WebpackModules.getModule(m => m.type?.displayName === "MessageContent");
 	const GetMessageModule = ZLibrary.DiscordModules.MessageStore;
-
+	const TooltipWrapper = ZLibrary.WebpackModules.getByPrototypes("renderTooltip");
+	const UserMentionModule =  WebpackModules.getByDisplayName("UserMention");
+ 
+	//what the message should be replaced with, since the discord urls are long and useless...
 	return class BetterMessageLinks extends Plugin {
 		async onStart() {
 			//inject css
 			BdApi.injectCSS(config.info.name, customCSS)
+			this.settings = this.loadSettings(defaultSettings);
 
 			//add a MessageContent patcher
 			Patcher.after(config.info.name, MessageContent, "type", (_, [props], ret) => {
-				if (ret?.props?.children[0].length > 0) { 
+				if (ret?.props?.children[0].length > 0) {
 					ret.props.children[0].forEach((child, i) => {
 						if (/https:\/\/(ptb.|canary.)?discord.com\/channels\/\d+\/\d{18}\/\d{18}/gi.test(child.props?.href)) {
+							//a discord link was found!
 							let newLink = ret.props.children[0][i];
-							newLink.props.children[0] = "<Message>";
-							newLink.props.onMouseEnter = () => {
-								console.log("hi")
-								this.addPopout(child)
-							};
+							//messagePreview is the element that gets put into the tooltip
+							let messagePreview = this.getMessagePreview(child);
+							let messageReplace = React.createElement("span", {}, this.settings.messageReplaceText);
+							//Make the tooltip
+							newLink.props.children[0] = messagePreview ? React.createElement(TooltipWrapper, {
+								position: TooltipWrapper.Positions.TOP,
+								color: TooltipWrapper.Colors.PRIMARY,
+								tooltipClassName: "betterMessageLinks-Tooltip",
+								text: messagePreview,
+								children: (tipProps) => {
+									return React.createElement("span", Object.assign({
+										children: [
+											messageReplace
+										]
+									}, tipProps))
+								}
+							}) : messageReplace; //dont make tooltip if can't get preview
+
+							//replace the old link child with the new one
 							ret.props.children[0][i] = newLink;
 						}
 					});
 				}
 			})
 		}
-		addPopout(child) {
-			let numberMatches = child.props.href.match(/\d{18}/g);
-			let messageId = numberMatches.pop();
-			let channelId = numberMatches.pop();
-			let guildId = numberMatches.pop();
+		getMessagePreview(child) {
+			//Ideally, i would replace this hand-made preview with the same way
+			//replies get made, so with the icon, name, messagePreview format...
+			let numberMatches = child.props.href.match(/\d+/g);
+			let messageId = numberMatches[2];
+			let channelId = numberMatches[1];
+			let guildId = numberMatches[0];
+
+			//get the message, problem: can't get message when it isn't in MessageStore (other guild, too far up etc.)
+			let message = GetMessageModule.getMessage(channelId, messageId);
+			let messageContent = message?.content;
+			let author = message?.author;
+			if (!message?.content) { return undefined }
+
+			//replace end with ... if message is long
+			if (messageContent.length > this.settings.previewMessageLength) {
+				messageContent = messageContent.substring(0, this.settings.previewMessageLength) + "...";
+			}
+			let mention = React.createElement(UserMentionModule, {className: "mention", userId: author.id});
+			
+			//maybe I need this later?
+			let icon = React.createElement("img", {src: `https://cdn.discordapp.com/avatars/${author.id}/${author.avatar}.webp?size=22`})
+			
+			//give back the preview
+			return React.createElement("span", {}, mention, React.createElement("span", {}, " "+messageContent));
+		}
+		getSettingsPanel() {
+			//build the settings pannel
+			return SettingPanel.build(() => this.saveSettings(this.settings),
+				new Textbox("Message Replace", "Replace all Discord message links with the following text.", this.settings.messageReplaceText, (i) => {
+					this.settings.messageReplaceText = i;
+				}),
+				//This setting will hopeully not be necessary as soon as I use the built-in Reply element instead...
+				new Slider("Preview character amount", "Defines how many characters the preview should have.", 1, 100, this.settings.previewMessageLength, (i) => {
+					this.settings.previewMessageLength = Math.round(i);
+				}, { markers: [1, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100], stickToMarkers: false, renderValue: (value) => Math.round(value) +" characters" }),
+			)
+
 		}
 		onStop() {
 			BdApi.clearCSS(config.info.name)
