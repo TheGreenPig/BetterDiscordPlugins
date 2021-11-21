@@ -23,7 +23,7 @@ const config = {
 			"discord_id": "324622488644616195",
 			"github_username": "Juby210"
 		}],
-		"version": "1.2.0",
+		"version": "1.2.1",
 		"description": "Instead of just showing the long and useless discord message link, make it smaller and add a preview.",
 		"github_raw": "https://raw.githubusercontent.com/TheGreenPig/BetterDiscordPlugins/main/BetterMessageLinks/BetterMessageLinks.plugin.js"
 	},
@@ -96,10 +96,12 @@ module.exports = !global.ZeresPluginLibrary ? class {
 	const MessageContent = WebpackModules.getModule(m => m.type?.displayName === "MessageContent");
 	const GetMessageModule = ZLibrary.DiscordModules.MessageStore;
 	const GetGuildModule = ZLibrary.DiscordModules.GuildStore;
+	const GetChannelModule = ZLibrary.DiscordModules.ChannelStore;
 	const TooltipWrapper = ZLibrary.WebpackModules.getByPrototypes("renderTooltip");
 	const User = WebpackModules.find(m => m.prototype && m.prototype.tag);
 	const Timestamp = WebpackModules.find(m => m.prototype && m.prototype.toDate && m.prototype.month)
 	const { stringify } = WebpackModules.getByProps('stringify', 'parse', 'encode');
+	const ImagePlaceHolder = WebpackModules.findByDisplayName("ImagePlaceholder");
 	let cache = {};
 	let lastFetch = 0;
 	let displayCharacters = 40;
@@ -185,23 +187,32 @@ module.exports = !global.ZeresPluginLibrary ? class {
 			if (this.props.replace !== "") {
 				messageReplace.props.children[0] = this.props.settings.messageReplaceText;
 			}
-			
+
 			if (!this.state) {
 				return this.wrapInTooltip("Loading...", messageReplace, "yellow")
 			}
-			
+
 			if (this.state.ok === false) {
 				if (this.state.body?.message) {
 					return this.wrapInTooltip(this.state.body?.message, messageReplace, "red")
 				}
 				return messageReplace;
 			}
-			
+
 			let message = this.state;
 			let messageContent = React.createElement("span", { class: "betterMessageLinks AlignMiddle" }, message.content.length > displayCharacters ? message.content.substring(0, displayCharacters) + "..." : message.content);
 			let author = message?.author;
-			
-			messageReplace.props.title = `Author: ${author.username}, ${message.guild?.name ? "Guild: "+message.guild?.name+", " : ""}ChannelId: ${message.channel_id}, Id: ${message.id}`
+
+			let title = "";
+			let channelName = GetChannelModule.getChannel(message.channel_id)?.name;
+			let guildName = message.guild?.name;
+
+			title += "Author: " + author.username;
+			if (guildName) { title += ", Guild: " + guildName; }
+			if (channelName) { title += ", Channel: #" + channelName; }
+			title += ", Id: " + message.id;
+			title += ", at " + new Date(message.timestamp).toLocaleString();;
+			messageReplace.props.title = title;
 
 			let mention = React.createElement("span", { className: "betterMessageLinks Author" }, author.username + ":");
 
@@ -213,7 +224,7 @@ module.exports = !global.ZeresPluginLibrary ? class {
 
 			let attachmentIcon = null;
 			if (message.attachments.length > 0) {
-				attachmentIcon = React.createElement(BdApi.findModuleByDisplayName("ImagePlaceholder"), { width: "20px", height: "20px", class: "betterMessageLinks AlignMiddle" })
+				attachmentIcon = React.createElement(ImagePlaceHolder, { width: "20px", height: "20px", class: "betterMessageLinks AlignMiddle" })
 			}
 
 			let messagePreview = React.createElement("div", {
