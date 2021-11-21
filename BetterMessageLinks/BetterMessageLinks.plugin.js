@@ -23,7 +23,7 @@ const config = {
 			"discord_id": "324622488644616195",
 			"github_username": "Juby210"
 		}],
-		"version": "1.0.1",
+		"version": "1.2.0",
 		"description": "Instead of just showing the long and useless discord message link, make it smaller and add a preview.",
 		"github_raw": "https://raw.githubusercontent.com/TheGreenPig/BetterDiscordPlugins/main/BetterMessageLinks/BetterMessageLinks.plugin.js"
 	},
@@ -67,10 +67,25 @@ module.exports = !global.ZeresPluginLibrary ? class {
 		.betterMessageLinks-Tooltip {
 			white-space: nowrap;
 			max-width: fit-content;
+			vertical-align: middle;
+		}
+		.betterMessageLinks.Author{
+			font-weight: bold;
+			padding-right: 5px;
+			vertical-align: middle;
+		}
+		.betterMessageLinks.AlignMiddle{
+			vertical-align: middle;
+		}
+		.betterMessageLinks.Icon{
+			width: 25px;
+			height: 25px;
 		}
 	`
 	const defaultSettings = {
 		messageReplaceText: "<Message>",
+		showAuthorIcon: true,
+		showGuildIcon: true,
 	};
 
 	//Settings and imports
@@ -80,13 +95,14 @@ module.exports = !global.ZeresPluginLibrary ? class {
 	//Modules
 	const MessageContent = WebpackModules.getModule(m => m.type?.displayName === "MessageContent");
 	const GetMessageModule = ZLibrary.DiscordModules.MessageStore;
+	const GetGuildModule = ZLibrary.DiscordModules.GuildStore;
 	const TooltipWrapper = ZLibrary.WebpackModules.getByPrototypes("renderTooltip");
-	const UserMentionModule = WebpackModules.getByDisplayName("UserMention");
 	const User = WebpackModules.find(m => m.prototype && m.prototype.tag);
 	const Timestamp = WebpackModules.find(m => m.prototype && m.prototype.toDate && m.prototype.month)
 	const { stringify } = WebpackModules.getByProps('stringify', 'parse', 'encode');
 	let cache = {};
 	let lastFetch = 0;
+	let displayCharacters = 40;
 
 	async function getMsg(channelId, messageId) {
 		let message = GetMessageModule.getMessage(channelId, messageId) || cache[messageId]
@@ -99,12 +115,21 @@ module.exports = !global.ZeresPluginLibrary ? class {
 					around: messageId
 				}),
 				retries: 2
+			}).catch((error) => {
+				return error;
 			})
 			lastFetch = Date.now()
-			message = data.body[0]
-			if (!message) return
-			message.author = new User(message.author)
-			message.timestamp = new Timestamp(message.timestamp)
+			if (data.ok) {
+				message = data.body[0]
+
+				if (!message) return
+				message.author = new User(message.author)
+				message.timestamp = new Timestamp(message.timestamp)
+			} else {
+				cache[messageId] = data;
+				return data;
+			}
+
 		}
 		cache[messageId] = message
 		return message;
@@ -133,48 +158,77 @@ module.exports = !global.ZeresPluginLibrary ? class {
 				let numberMatches = this.props.original.props.href.match(/\d+/g);
 				let messageId = numberMatches[numberMatches.length - 1];
 				let channelId = numberMatches[numberMatches.length - 2];
-				this.setState(await getMsgWithQueue(channelId, messageId));
+				let guildId = numberMatches.length > 2 ? numberMatches[numberMatches.length - 3] : undefined;
+
+				let message = await getMsgWithQueue(channelId, messageId);
+				message.guild = guildId ? GetGuildModule.getGuild(guildId) : "@me";
+				this.setState(message);
 			}
 		}
-		render() {
-			if (!this.state) { return null }
-			let message = this.state;
-			let messageContent = message?.content;
-			let author = message?.author;
-			if (!message?.content || message?.content === "") { return null }
-
-			//replace end with ... if message is long
-			if (messageContent.length > 40) {
-				messageContent = messageContent.substring(0, 40) + "...";
-			}
-			let mention = React.createElement(UserMentionModule, { className: "betterMessageLinks-Mention", userId: author.id });
-
-			//maybe I need this later?
-			// let icon = React.createElement("img", { src: `https://cdn.discordapp.com/avatars/${author.id}/${author.avatar}.webp`, class: "replyAvatar-1K9Wmr betterMessageLinks-Image" })
-
-			//give back the preview
-			let messagePreview = React.createElement("div", { class: "betterMessageLinks-Preview" }, mention, React.createElement("span", { class: "betterMessageLinks-Message" }, " " + messageContent));
-
-			let messageReplace = this.props.original;
-			if (this.props.replace !== "") {
-				messageReplace.props.children[0] = this.props.replace;
-			}
-			//Make the tooltip
-			let newLink = messagePreview ? React.createElement(TooltipWrapper, {
+		wrapInTooltip(tooltipText, child, color) {
+			return React.createElement(TooltipWrapper, {
 				position: TooltipWrapper.Positions.TOP,
-				color: TooltipWrapper.Colors.PRIMARY,
+				color: color,
 				tooltipClassName: "betterMessageLinks-Tooltip",
-				text: messagePreview,
+				text: tooltipText,
 				children: (tipProps) => {
 					return React.createElement("span", Object.assign({
 						children: [
-							messageReplace
+							child
 						]
 					}, tipProps))
 				}
-			}) : messageReplace; //dont make tooltip if can't get preview
+			})
+		}
+		render() {
+			let messageReplace = this.props.original;
+			if (this.props.replace !== "") {
+				messageReplace.props.children[0] = this.props.settings.messageReplaceText;
+			}
+			
+			if (!this.state) {
+				return this.wrapInTooltip("Loading...", messageReplace, "yellow")
+			}
+			
+			if (this.state.ok === false) {
+				if (this.state.body?.message) {
+					return this.wrapInTooltip(this.state.body?.message, messageReplace, "red")
+				}
+				return messageReplace;
+			}
+			
+			let message = this.state;
+			let messageContent = React.createElement("span", { class: "betterMessageLinks AlignMiddle" }, message.content.length > displayCharacters ? message.content.substring(0, displayCharacters) + "..." : message.content);
+			let author = message?.author;
+			
+			messageReplace.props.title = `Author: ${author.username}, ${message.guild?.name ? "Guild: "+message.guild?.name+", " : ""}ChannelId: ${message.channel_id}, Id: ${message.id}`
 
-			// return newLink;
+			let mention = React.createElement("span", { className: "betterMessageLinks Author" }, author.username + ":");
+
+			let authorIcon = this.props.settings.showAuthorIcon ? React.createElement("img", { src: `https://cdn.discordapp.com/avatars/${author.id}/${author.avatar}.webp`, class: "replyAvatar-1K9Wmr betterMessageLinks AlignMiddle Icon" }) : null;
+			let guildIcon = null;
+			if (this.props.settings.showGuildIcon && message.guild?.icon && message.guild.id !== ZLibrary.DiscordModules.SelectedGuildStore.getGuildId()) {
+				guildIcon = React.createElement("img", { src: `https://cdn.discordapp.com/icons/${message.guild.id}/${message.guild.icon}.webp`, class: "replyAvatar-1K9Wmr betterMessageLinks AlignMiddle Icon" })
+			}
+
+			let attachmentIcon = null;
+			if (message.attachments.length > 0) {
+				attachmentIcon = React.createElement(BdApi.findModuleByDisplayName("ImagePlaceholder"), { width: "20px", height: "20px", class: "betterMessageLinks AlignMiddle" })
+			}
+
+			let messagePreview = React.createElement("div", {
+				class: "betterMessageLinks AlignMiddle",
+				children: [
+					guildIcon,
+					authorIcon,
+					mention,
+					attachmentIcon,
+					messageContent,
+				]
+			});
+
+			let newLink = this.wrapInTooltip(messagePreview, messageReplace, TooltipWrapper.Colors.PRIMARY);
+
 			return newLink
 		}
 	}
@@ -187,8 +241,8 @@ module.exports = !global.ZeresPluginLibrary ? class {
 			Patcher.after(config.info.name, MessageContent, "type", (_, [props], ret) => {
 				if (ret?.props?.children[0].length > 0) {
 					ret.props.children[0].forEach((child, i) => {
-						if (/https:\/\/(ptb.|canary.)?discord.com\/channels\/(\d+|@me)\/\d{18}\/\d{18}/gi.test(child.props?.href)) {
-							ret.props.children[0][i] = React.createElement(BetterLink, { original: child, replace: this.settings.messageReplaceText });
+						if (/https:\/\/(ptb.|canary.)?discord.com\/channels\/(\d+|@me)\/\d+\/\d+/gi.test(child.props?.href)) {
+							ret.props.children[0][i] = React.createElement(BetterLink, { original: child, settings: this.settings });
 						}
 					});
 				}
@@ -200,6 +254,12 @@ module.exports = !global.ZeresPluginLibrary ? class {
 			return SettingPanel.build(() => this.saveSettings(this.settings),
 				new Textbox("Message Replace", "Replace all Discord message links with the following text. Leave empty to not change the Discord Link at all.", this.settings.messageReplaceText, (i) => {
 					this.settings.messageReplaceText = i;
+				}),
+				new Switch("Show Author icon", "Display the icon of the Message Author.", this.settings.showAuthorIcon, (i) => {
+					this.settings.showAuthorIcon = i;
+				}),
+				new Switch("Show Guild icon", "Display the guild icon of the message next to the author icon if you aren't in the same guild as the linked message.", this.settings.showGuildIcon, (i) => {
+					this.settings.showGuildIcon = i;
 				}),
 			)
 
