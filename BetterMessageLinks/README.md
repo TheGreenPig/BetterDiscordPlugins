@@ -5,4 +5,5 @@ This plugin uses code from [Strenchers MessageLinkEmbed](https://github.com/Stre
 
 Demo:
 
-![Demo](https://user-images.githubusercontent.com/67547385/142818757-f34b093b-7642-4ce1-958f-e75a639339bf.png)
+![Preview](https://user-images.githubusercontent.com/67547385/142818757-f34b093b-7642-4ce1-958f-e75a639339bf.png)
+![Title](https://user-images.githubusercontent.com/67547385/142819479-169b6be4-f74a-4e43-becf-bbeed36b795d.png)
