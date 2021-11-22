@@ -39,7 +39,7 @@ const config = {
 */
 
 
-// This plugin was only made possible by the generous help of Strencher and the MEssageLinkEmbed plugin by him and Juby210! They definitely deserve all the credit
+// This plugin was only made possible by the generous help of Strencher and the MessageLinkEmbed plugin by him and Juby210! They definitely deserve all the credit
 
 module.exports = !global.ZeresPluginLibrary ? class {
 	constructor() { this._config = config; }
@@ -72,7 +72,6 @@ module.exports = !global.ZeresPluginLibrary ? class {
 		.betterMessageLinks.Author{
 			font-weight: bold;
 			padding-right: 5px;
-			vertical-align: middle;
 		}
 		.betterMessageLinks.AlignMiddle{
 			vertical-align: middle;
@@ -84,9 +83,12 @@ module.exports = !global.ZeresPluginLibrary ? class {
 	`
 	const defaultSettings = {
 		messageReplaceText: "<Message>",
+		attachmentReplaceText: "<Attachment>",
 		showAuthorIcon: true,
 		showGuildIcon: true,
+		advancedTitle: `Author: $authorName, Guild: $guildName, Channel: $channelName, Id: $messageId at $timestamp`,
 	};
+	const validTitleValues = ["authorName", "guildName", "guildId", "channelName", "channelId", "messageId", "timestamp", "nsfw"]
 
 	//Settings and imports
 	const { Toasts, WebpackModules, Patcher, React, Settings, DiscordModules } = { ...Library, ...BdApi };
@@ -94,10 +96,10 @@ module.exports = !global.ZeresPluginLibrary ? class {
 
 	//Modules
 	const MessageContent = WebpackModules.getModule(m => m.type?.displayName === "MessageContent");
-	const GetMessageModule = ZLibrary.DiscordModules.MessageStore;
-	const GetGuildModule = ZLibrary.DiscordModules.GuildStore;
-	const GetChannelModule = ZLibrary.DiscordModules.ChannelStore;
-	const TooltipWrapper = ZLibrary.WebpackModules.getByPrototypes("renderTooltip");
+	const GetMessageModule = DiscordModules.MessageStore;
+	const GetGuildModule = DiscordModules.GuildStore;
+	const GetChannelModule = DiscordModules.ChannelStore;
+	const TooltipWrapper = WebpackModules.getByPrototypes("renderTooltip");
 	const User = WebpackModules.find(m => m.prototype && m.prototype.tag);
 	const Timestamp = WebpackModules.find(m => m.prototype && m.prototype.toDate && m.prototype.month)
 	const { stringify } = WebpackModules.getByProps('stringify', 'parse', 'encode');
@@ -157,12 +159,13 @@ module.exports = !global.ZeresPluginLibrary ? class {
 		}
 		async componentDidMount() {
 			if (!this.state) {
-				let numberMatches = this.props.original.props.href.match(/\d+/g);
+				let numberMatches = this.props.original.props.href.split("/").filter((e) => /^\d+$/.test(e));
 				let messageId = numberMatches[numberMatches.length - 1];
 				let channelId = numberMatches[numberMatches.length - 2];
 				let guildId = numberMatches.length > 2 ? numberMatches[numberMatches.length - 3] : undefined;
 
 				let message = await getMsgWithQueue(channelId, messageId);
+				if (!message) return
 				message.guild = guildId ? GetGuildModule.getGuild(guildId) : "@me";
 				this.setState(message);
 			}
@@ -184,37 +187,73 @@ module.exports = !global.ZeresPluginLibrary ? class {
 		}
 		render() {
 			let messageReplace = this.props.original;
-			if (this.props.replace !== "") {
+
+			if (this.props.attachmentLink && this.props.settings.attachmentReplaceText !== "") {
+				messageReplace.props.children[0] = this.props.settings.attachmentReplaceText;
+			}
+			else if (this.props.settings.messageReplaceText !== "") {
 				messageReplace.props.children[0] = this.props.settings.messageReplaceText;
 			}
 
+			
 			if (!this.state) {
 				return this.wrapInTooltip("Loading...", messageReplace, "yellow")
 			}
-
-			if (this.state.ok === false) {
+			else if (this.state.ok === false) {
+				if (this.props.attachmentLink) {
+					//if it's an attachment, display the file name instead of an error 
+					let fileName = this.props.original.props.href.split("/").slice(-1);
+	
+					return this.wrapInTooltip(fileName, messageReplace, TooltipWrapper.Colors.PRIMARY);
+				}
 				if (this.state.body?.message) {
 					return this.wrapInTooltip(this.state.body?.message, messageReplace, "red")
 				}
 				return messageReplace;
-			}
+			} 
 
 			let message = this.state;
+			if(this.props.attachmentLink) message.content = this.props.original.props.href.split("/").slice(-1);
 			let messageContent = React.createElement("span", { class: "betterMessageLinks AlignMiddle" }, message.content.length > displayCharacters ? message.content.substring(0, displayCharacters) + "..." : message.content);
 			let author = message?.author;
+			let channel = GetChannelModule.getChannel(message.channel_id);
 
-			let title = "";
-			let channelName = GetChannelModule.getChannel(message.channel_id)?.name;
-			let guildName = message.guild?.name;
+			let authorName = author.username;
+			let authorId = author.id;
+			let guildName, guildId = "";
+			let channelName = "";
+			let channelId = channel.id;
+			let messageId = message.id;
+			let timestamp = new Date(message.timestamp).toLocaleString();
+			let nsfw = channel.nsfw;
 
-			title += "Author: " + author.username;
-			if (guildName) { title += ", Guild: " + guildName; }
-			if (channelName) { title += ", Channel: #" + channelName; }
-			title += ", Id: " + message.id;
-			title += ", at " + new Date(message.timestamp).toLocaleString();;
-			messageReplace.props.title = title;
+			if (channel.type === DiscordModules.DiscordConstants.ChannelTypes.DM) {
+				guildName = "DM";
+				guildId = "@me";
+				channelName = channel.rawRecipients[0].username;
+			}
+			else if (channel.type === DiscordModules.DiscordConstants.ChannelTypes.GROUP_DM) {
+				guildName = "DMs"
+				guildId = "@me";
+				channelName = channel.rawRecipients.map((e) => e.username).slice(0, 3).join("-");
+			}
+			else {
+				guildName = message.guild.name;
+				guildId = message.guild.id;
+				channelName = "#" + channel.name;
+			}
 
-			let mention = React.createElement("span", { className: "betterMessageLinks Author" }, author.username + ":");
+			if (this.props.settings.advancedTitle !== "") {
+				let title = this.props.settings.advancedTitle;
+				validTitleValues.forEach((value) => {
+					title = title.replace("$" + value, eval(value))
+				})
+				if (title.includes("$")) title = "Invalid variables set! Make sure you don't use $ unless it's a valid variable."
+				messageReplace.props.title = title;
+			}
+
+
+			let mention = React.createElement("span", { className: "betterMessageLinks Author AlignMiddle" }, author.username + ":");
 
 			let authorIcon = this.props.settings.showAuthorIcon ? React.createElement("img", { src: `https://cdn.discordapp.com/avatars/${author.id}/${author.avatar}.webp`, class: "replyAvatar-1K9Wmr betterMessageLinks AlignMiddle Icon" }) : null;
 			let guildIcon = null;
@@ -254,23 +293,30 @@ module.exports = !global.ZeresPluginLibrary ? class {
 					ret.props.children[0].forEach((child, i) => {
 						if (/https:\/\/(ptb.|canary.)?discord.com\/channels\/(\d+|@me)\/\d+\/\d+/gi.test(child.props?.href)) {
 							ret.props.children[0][i] = React.createElement(BetterLink, { original: child, settings: this.settings });
+						} else if (/https:\/\/(media|cdn).discordapp.(com|net)\/attachments\/\d+\/\d+\/.+/gi.test(child.props?.href)) {
+							ret.props.children[0][i] = React.createElement(BetterLink, { original: child, settings: this.settings, attachmentLink: true });
 						}
 					});
 				}
 			})
 		}
-
 		getSettingsPanel() {
 			//build the settings panel
 			return SettingPanel.build(() => this.saveSettings(this.settings),
 				new Textbox("Message Replace", "Replace all Discord message links with the following text. Leave empty to not change the Discord Link at all.", this.settings.messageReplaceText, (i) => {
 					this.settings.messageReplaceText = i;
 				}),
+				new Textbox("Attachment Replace", "Replace all Discord Attachment links with the following text. Leave empty to not change the Discord Link at all.", this.settings.attachmentReplaceText, (i) => {
+					this.settings.attachmentReplaceText = i;
+				}),
 				new Switch("Show Author icon", "Display the icon of the Message Author.", this.settings.showAuthorIcon, (i) => {
 					this.settings.showAuthorIcon = i;
 				}),
 				new Switch("Show Guild icon", "Display the guild icon of the message next to the author icon if you aren't in the same guild as the linked message.", this.settings.showGuildIcon, (i) => {
 					this.settings.showGuildIcon = i;
+				}),
+				new Textbox("Advanced link title", "Changes the title of the link. Use $valueName to display specific values. Valid values: " + validTitleValues.join(", ") + ".", this.settings.advancedTitle, (i) => {
+					this.settings.advancedTitle = i;
 				}),
 			)
 
