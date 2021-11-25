@@ -80,6 +80,18 @@ module.exports = !global.ZeresPluginLibrary ? class {
 			width: 25px;
 			height: 25px;
 		}
+		.betterMessageLinks.List{
+			padding-left: 20px;
+			-webkit-user-select: text;
+			padding-top: 3px;
+		}
+		.betterMessageLinks.ListElement{
+			font-weight: bold;
+		}
+		.betterMessageLinks.ListElement.Symbol{
+			font-size: 1.1em;
+			padding-right: 3px;
+		}
 	`
 	const defaultSettings = {
 		messageReplaceText: "<Message>",
@@ -217,6 +229,7 @@ module.exports = !global.ZeresPluginLibrary ? class {
 			let messageContent = React.createElement("span", { class: "betterMessageLinks AlignMiddle" }, message.content.length > displayCharacters ? message.content.substring(0, displayCharacters) + "..." : message.content);
 			let author = message?.author;
 			let channel = GetChannelModule.getChannel(message.channel_id);
+			if(!channel) messageReplace;
 
 			let authorName = author.username;
 			let authorId = author.id;
@@ -301,6 +314,18 @@ module.exports = !global.ZeresPluginLibrary ? class {
 			})
 		}
 		getSettingsPanel() {
+			let listArray = [];
+			validTitleValues.forEach((value) => {
+				listArray.push(React.createElement("li", {class: "betterMessageLinks ListElement"}, 
+					React.createElement("span", {class: "betterMessageLinks ListElement Symbol"}, "$"),
+					value));
+			})
+			console.log(listArray)
+			let unorderedList = React.createElement("ul", {
+				children: listArray,
+				class: "betterMessageLinks List"
+			});
+
 			//build the settings panel
 			return SettingPanel.build(() => this.saveSettings(this.settings),
 				new Textbox("Message Replace", "Replace all Discord message links with the following text. Leave empty to not change the Discord Link at all.", this.settings.messageReplaceText, (i) => {
@@ -315,7 +340,7 @@ module.exports = !global.ZeresPluginLibrary ? class {
 				new Switch("Show Guild icon", "Display the guild icon of the message next to the author icon if you aren't in the same guild as the linked message.", this.settings.showGuildIcon, (i) => {
 					this.settings.showGuildIcon = i;
 				}),
-				new Textbox("Advanced link title", "Changes the title of the link. Use $valueName to display specific values. Valid values: " + validTitleValues.join(", ") + ".", this.settings.advancedTitle, (i) => {
+				new Textbox("Advanced link title", React.createElement("div", {}, "Changes the title of the link. Use $value to display specific values. Valid values: ", unorderedList), this.settings.advancedTitle, (i) => {
 					this.settings.advancedTitle = i;
 				}),
 			)
