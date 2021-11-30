@@ -5,7 +5,7 @@
  * @authorLink https://github.com/TheGreenPig
  * @source https://github.com/TheGreenPig/BetterDiscordPlugins/main/BetterMessageLinks/BetterMessageLinks.plugin.js
  */
-const config = {
+ const config = {
 	"info": {
 		"name": "BetterMessageLinks",
 		"authors": [{
@@ -23,10 +23,20 @@ const config = {
 			"discord_id": "324622488644616195",
 			"github_username": "Juby210"
 		}],
-		"version": "1.2.1",
+		"version": "1.2.2",
 		"description": "Instead of just showing the long and useless discord message link, make it smaller and add a preview.",
 		"github_raw": "https://raw.githubusercontent.com/TheGreenPig/BetterDiscordPlugins/main/BetterMessageLinks/BetterMessageLinks.plugin.js"
 	},
+	"changelog": [
+		{
+			"title": "Added:",
+			"type": "Added",
+			"items": [
+				"Markup support.",
+				"Newline Support.",
+			]
+		},
+	],
 }
 
 /* ----Useful links----
@@ -64,10 +74,10 @@ module.exports = !global.ZeresPluginLibrary ? class {
 } : (([Plugin, Library]) => {
 	//Custom css
 	const customCSS = `
-		.betterMessageLinks-Tooltip {
-			white-space: nowrap;
-			max-width: fit-content;
-			vertical-align: middle;
+		.betterMessageLinks.Tooltip {
+  			max-width: 280px; 
+			max-height: fit-content;
+			overflow: hidden;
 		}
 		.betterMessageLinks.Author{
 			font-weight: bold;
@@ -79,6 +89,18 @@ module.exports = !global.ZeresPluginLibrary ? class {
 		.betterMessageLinks.Icon{
 			width: 25px;
 			height: 25px;
+		}
+		.betterMessageLinks.List{
+			padding-left: 20px;
+			-webkit-user-select: text;
+			padding-top: 3px;
+		}
+		.betterMessageLinks.ListElement{
+			font-weight: bold;
+		}
+		.betterMessageLinks.ListElement.Symbol{
+			font-size: 1.1em;
+			padding-right: 3px;
 		}
 	`
 	const defaultSettings = {
@@ -104,9 +126,10 @@ module.exports = !global.ZeresPluginLibrary ? class {
 	const Timestamp = WebpackModules.find(m => m.prototype && m.prototype.toDate && m.prototype.month)
 	const { stringify } = WebpackModules.getByProps('stringify', 'parse', 'encode');
 	const ImagePlaceHolder = WebpackModules.findByDisplayName("ImagePlaceholder");
+	const RenderMessageMarkupToASTModule = WebpackModules.getByProps("renderMessageMarkupToAST");
 	let cache = {};
 	let lastFetch = 0;
-	let displayCharacters = 40;
+	let displayCharacters = 500;
 
 	async function getMsg(channelId, messageId) {
 		let message = GetMessageModule.getMessage(channelId, messageId) || cache[messageId]
@@ -174,7 +197,7 @@ module.exports = !global.ZeresPluginLibrary ? class {
 			return React.createElement(TooltipWrapper, {
 				position: TooltipWrapper.Positions.TOP,
 				color: color,
-				tooltipClassName: "betterMessageLinks-Tooltip",
+				tooltipClassName: "betterMessageLinks AlignMiddle Tooltip",
 				text: tooltipText,
 				children: (tipProps) => {
 					return React.createElement("span", Object.assign({
@@ -195,7 +218,7 @@ module.exports = !global.ZeresPluginLibrary ? class {
 				messageReplace.props.children[0] = this.props.settings.messageReplaceText;
 			}
 
-			
+
 			if (!this.state) {
 				return this.wrapInTooltip("Loading...", messageReplace, "yellow")
 			}
@@ -203,21 +226,41 @@ module.exports = !global.ZeresPluginLibrary ? class {
 				if (this.props.attachmentLink) {
 					//if it's an attachment, display the file name instead of an error 
 					let fileName = this.props.original.props.href.split("/").slice(-1);
-	
+
 					return this.wrapInTooltip(fileName, messageReplace, TooltipWrapper.Colors.PRIMARY);
 				}
 				if (this.state.body?.message) {
 					return this.wrapInTooltip(this.state.body?.message, messageReplace, "red")
 				}
 				return messageReplace;
-			} 
+			}
 
 			let message = this.state;
-			if(this.props.attachmentLink) message.content = this.props.original.props.href.split("/").slice(-1);
-			let messageContent = React.createElement("span", { class: "betterMessageLinks AlignMiddle" }, message.content.length > displayCharacters ? message.content.substring(0, displayCharacters) + "..." : message.content);
-			let author = message?.author;
 			let channel = GetChannelModule.getChannel(message.channel_id);
+			if (!channel) return messageReplace;
 
+			let messageContent="";
+			if (this.props.attachmentLink) {
+				message.content = this.props.original.props.href.split("/").slice(-1);
+
+				messageContent = React.createElement("span", {
+					class: "betterMessageLinks AlignMiddle",
+					children: message.content
+				});
+			} else {
+				message.content = message.content.length > displayCharacters ? message.content.substring(0, displayCharacters) + "..." : message.content;
+				let formattedMessageArray = RenderMessageMarkupToASTModule.default(Object.assign({}, message), { renderMediaEmbeds: true, formatInline: false, isInteracting: true }).content;
+	
+				formattedMessageArray = this.processNewLines(formattedMessageArray);
+	
+				messageContent = React.createElement("span", {
+					class: "betterMessageLinks AlignMiddle",
+					children: formattedMessageArray
+				});
+			}
+			
+
+			let author = message?.author;
 			let authorName = author.username;
 			let authorId = author.id;
 			let guildName, guildId = "";
@@ -273,6 +316,7 @@ module.exports = !global.ZeresPluginLibrary ? class {
 					authorIcon,
 					mention,
 					attachmentIcon,
+					React.createElement("br", {}),
 					messageContent,
 				]
 			});
@@ -280,6 +324,27 @@ module.exports = !global.ZeresPluginLibrary ? class {
 			let newLink = this.wrapInTooltip(messagePreview, messageReplace, TooltipWrapper.Colors.PRIMARY);
 
 			return newLink
+		}
+
+		processNewLines(array) {
+			let processedArray = [];
+			array.forEach((messageElement) => {
+				if (!messageElement.type && messageElement.includes("\n")) {
+					messageElement.split("\n").forEach((line) => {
+						processedArray.push(line);
+						processedArray.push(React.createElement("br", {}))
+					})
+				}
+				else {
+					processedArray.push(messageElement)
+				}
+			})
+			if (processedArray.length === 0) return array;
+			
+			if (processedArray[processedArray.length - 1].type) {
+				processedArray.pop()
+			}
+			return processedArray;
 		}
 	}
 	return class BetterMessageLinks extends Plugin {
@@ -301,6 +366,17 @@ module.exports = !global.ZeresPluginLibrary ? class {
 			})
 		}
 		getSettingsPanel() {
+			let listArray = [];
+			validTitleValues.forEach((value) => {
+				listArray.push(React.createElement("li", { class: "betterMessageLinks ListElement" },
+					React.createElement("span", { class: "betterMessageLinks ListElement Symbol" }, "$"),
+					value));
+			})
+			let unorderedList = React.createElement("ul", {
+				children: listArray,
+				class: "betterMessageLinks List"
+			});
+
 			//build the settings panel
 			return SettingPanel.build(() => this.saveSettings(this.settings),
 				new Textbox("Message Replace", "Replace all Discord message links with the following text. Leave empty to not change the Discord Link at all.", this.settings.messageReplaceText, (i) => {
@@ -315,7 +391,7 @@ module.exports = !global.ZeresPluginLibrary ? class {
 				new Switch("Show Guild icon", "Display the guild icon of the message next to the author icon if you aren't in the same guild as the linked message.", this.settings.showGuildIcon, (i) => {
 					this.settings.showGuildIcon = i;
 				}),
-				new Textbox("Advanced link title", "Changes the title of the link. Use $valueName to display specific values. Valid values: " + validTitleValues.join(", ") + ".", this.settings.advancedTitle, (i) => {
+				new Textbox("Advanced link title", React.createElement("div", {}, "Changes the title of the link. Use $value to display specific values. Valid values: ", unorderedList), this.settings.advancedTitle, (i) => {
 					this.settings.advancedTitle = i;
 				}),
 			)
