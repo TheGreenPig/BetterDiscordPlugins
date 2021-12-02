@@ -5,7 +5,7 @@
  * @authorLink https://github.com/TheGreenPig
  * @source https://github.com/TheGreenPig/BetterDiscordPlugins/main/BetterMessageLinks/BetterMessageLinks.plugin.js
  */
- const config = {
+const config = {
 	"info": {
 		"name": "BetterMessageLinks",
 		"authors": [{
@@ -23,7 +23,7 @@
 			"discord_id": "324622488644616195",
 			"github_username": "Juby210"
 		}],
-		"version": "1.2.2",
+		"version": "1.2.3",
 		"description": "Instead of just showing the long and useless discord message link, make it smaller and add a preview.",
 		"github_raw": "https://raw.githubusercontent.com/TheGreenPig/BetterDiscordPlugins/main/BetterMessageLinks/BetterMessageLinks.plugin.js"
 	},
@@ -32,8 +32,14 @@
 			"title": "Added:",
 			"type": "Added",
 			"items": [
-				"Markup support.",
-				"Newline Support.",
+				"Image preview",
+			]
+		},
+		{
+			"title": "Fixed:",
+			"type": "fixed",
+			"items": [
+				"Actual markup support for italic and strong",
 			]
 		},
 	],
@@ -74,34 +80,44 @@ module.exports = !global.ZeresPluginLibrary ? class {
 } : (([Plugin, Library]) => {
 	//Custom css
 	const customCSS = `
-		.betterMessageLinks.Tooltip {
-  			max-width: 280px; 
-			max-height: fit-content;
-			overflow: hidden;
-		}
-		.betterMessageLinks.Author{
-			font-weight: bold;
-			padding-right: 5px;
-		}
-		.betterMessageLinks.AlignMiddle{
-			vertical-align: middle;
-		}
-		.betterMessageLinks.Icon{
-			width: 25px;
-			height: 25px;
-		}
-		.betterMessageLinks.List{
-			padding-left: 20px;
-			-webkit-user-select: text;
-			padding-top: 3px;
-		}
-		.betterMessageLinks.ListElement{
-			font-weight: bold;
-		}
-		.betterMessageLinks.ListElement.Symbol{
-			font-size: 1.1em;
-			padding-right: 3px;
-		}
+	.betterMessageLinks.Tooltip {
+		max-width: 280px; 
+	  	max-height: fit-content;
+	  	overflow: hidden;
+	}
+	.betterMessageLinks > em {
+		font-style: italic;
+	}
+	.betterMessageLinks > strong {
+		font-weight: bold;
+	}
+	.betterMessageLinks.Image {
+		border-radius: 10px;
+		max-width: 255px;
+	}
+	.betterMessageLinks.Author{
+		font-weight: bold;
+		padding-right: 5px;
+	}
+	.betterMessageLinks.AlignMiddle{
+		vertical-align: middle;
+	}
+	.betterMessageLinks.Icon{
+		width: 25px;
+		height: 25px;
+	}
+	.betterMessageLinks.List{
+		padding-left: 20px;
+		-webkit-user-select: text;
+		padding-top: 3px;
+	}
+	.betterMessageLinks.ListElement{
+		font-weight: bold;
+	}
+	.betterMessageLinks.ListElement.Symbol{
+		font-size: 1.1em;
+		padding-right: 3px;
+	}
 	`
 	const defaultSettings = {
 		messageReplaceText: "<Message>",
@@ -239,7 +255,7 @@ module.exports = !global.ZeresPluginLibrary ? class {
 			let channel = GetChannelModule.getChannel(message.channel_id);
 			if (!channel) return messageReplace;
 
-			let messageContent="";
+			let messageContent = "";
 			if (this.props.attachmentLink) {
 				message.content = this.props.original.props.href.split("/").slice(-1);
 
@@ -250,15 +266,14 @@ module.exports = !global.ZeresPluginLibrary ? class {
 			} else {
 				message.content = message.content.length > displayCharacters ? message.content.substring(0, displayCharacters) + "..." : message.content;
 				let formattedMessageArray = RenderMessageMarkupToASTModule.default(Object.assign({}, message), { renderMediaEmbeds: true, formatInline: false, isInteracting: true }).content;
-	
+
 				formattedMessageArray = this.processNewLines(formattedMessageArray);
-	
+
 				messageContent = React.createElement("span", {
 					class: "betterMessageLinks AlignMiddle",
 					children: formattedMessageArray
 				});
 			}
-			
 
 			let author = message?.author;
 			let authorName = author.username;
@@ -305,8 +320,10 @@ module.exports = !global.ZeresPluginLibrary ? class {
 			}
 
 			let attachmentIcon = null;
+			let attachment = null;
 			if (message.attachments.length > 0) {
 				attachmentIcon = React.createElement(ImagePlaceHolder, { width: "20px", height: "20px", class: "betterMessageLinks AlignMiddle" })
+				attachment = React.createElement("img", {class: "betterMessageLinks AlignMiddle Image", src: message.attachments[0].url});
 			}
 
 			let messagePreview = React.createElement("div", {
@@ -318,6 +335,7 @@ module.exports = !global.ZeresPluginLibrary ? class {
 					attachmentIcon,
 					React.createElement("br", {}),
 					messageContent,
+					attachment,
 				]
 			});
 
@@ -330,20 +348,13 @@ module.exports = !global.ZeresPluginLibrary ? class {
 			let processedArray = [];
 			array.forEach((messageElement) => {
 				if (!messageElement.type && messageElement.includes("\n")) {
-					messageElement.split("\n").forEach((line) => {
-						processedArray.push(line);
-						processedArray.push(React.createElement("br", {}))
-					})
+					processedArray.push(messageElement.split("\n").map(e => React.createElement("div", {}, e)));
 				}
 				else {
 					processedArray.push(messageElement)
 				}
 			})
 			if (processedArray.length === 0) return array;
-			
-			if (processedArray[processedArray.length - 1].type) {
-				processedArray.pop()
-			}
 			return processedArray;
 		}
 	}
