@@ -23,7 +23,7 @@ const config = {
 			"discord_id": "324622488644616195",
 			"github_username": "Juby210"
 		}],
-		"version": "1.2.3",
+		"version": "1.2.4",
 		"description": "Instead of just showing the long and useless discord message link, make it smaller and add a preview.",
 		"github_raw": "https://raw.githubusercontent.com/TheGreenPig/BetterDiscordPlugins/main/BetterMessageLinks/BetterMessageLinks.plugin.js"
 	},
@@ -32,14 +32,8 @@ const config = {
 			"title": "Added:",
 			"type": "Added",
 			"items": [
-				"Image preview",
-			]
-		},
-		{
-			"title": "Fixed:",
-			"type": "fixed",
-			"items": [
-				"Actual markup support for italic and strong",
+				"Bot tag",
+				"Icon for embed",
 			]
 		},
 	],
@@ -82,7 +76,7 @@ module.exports = !global.ZeresPluginLibrary ? class {
 	const customCSS = `
 	.betterMessageLinks.Tooltip {
 		max-width: 280px; 
-	  	max-height: fit-content;
+	  	max-height: 450px;;
 	  	overflow: hidden;
 	}
 	.betterMessageLinks > em {
@@ -94,6 +88,7 @@ module.exports = !global.ZeresPluginLibrary ? class {
 	.betterMessageLinks.Image {
 		border-radius: 10px;
 		max-width: 255px;
+		padding-top: 5px;
 	}
 	.betterMessageLinks.Author{
 		font-weight: bold;
@@ -105,6 +100,9 @@ module.exports = !global.ZeresPluginLibrary ? class {
 	.betterMessageLinks.Icon{
 		width: 25px;
 		height: 25px;
+	}
+	.betterMessageLinks.BotTag{
+		padding-right: 5px;
 	}
 	.betterMessageLinks.List{
 		padding-left: 20px;
@@ -142,6 +140,7 @@ module.exports = !global.ZeresPluginLibrary ? class {
 	const Timestamp = WebpackModules.find(m => m.prototype && m.prototype.toDate && m.prototype.month)
 	const { stringify } = WebpackModules.getByProps('stringify', 'parse', 'encode');
 	const ImagePlaceHolder = WebpackModules.findByDisplayName("ImagePlaceholder");
+	const BotTag = WebpackModules.findByDisplayName("BotTag");
 	const RenderMessageMarkupToASTModule = WebpackModules.getByProps("renderMessageMarkupToAST");
 	let cache = {};
 	let lastFetch = 0;
@@ -211,15 +210,15 @@ module.exports = !global.ZeresPluginLibrary ? class {
 		}
 		wrapInTooltip(tooltipText, child, color) {
 			return React.createElement(TooltipWrapper, {
-				position: TooltipWrapper.Positions.TOP,
 				color: color,
 				tooltipClassName: "betterMessageLinks AlignMiddle Tooltip",
 				text: tooltipText,
+				disableTooltipPointerEvents: false,
 				children: (tipProps) => {
 					return React.createElement("span", Object.assign({
 						children: [
 							child
-						]
+						],
 					}, tipProps))
 				}
 			})
@@ -264,7 +263,7 @@ module.exports = !global.ZeresPluginLibrary ? class {
 					children: message.content
 				});
 			} else {
-				message.content = message.content.length > displayCharacters ? message.content.substring(0, displayCharacters) + "..." : message.content;
+				// message.content = message.content.length > displayCharacters ? message.content.substring(0, displayCharacters) + "..." : message.content;
 				let formattedMessageArray = RenderMessageMarkupToASTModule.default(Object.assign({}, message), { renderMediaEmbeds: true, formatInline: false, isInteracting: true }).content;
 
 				formattedMessageArray = this.processNewLines(formattedMessageArray);
@@ -312,6 +311,7 @@ module.exports = !global.ZeresPluginLibrary ? class {
 
 
 			let mention = React.createElement("span", { className: "betterMessageLinks Author AlignMiddle" }, author.username + ":");
+			let botIcon = this.props.settings.showAuthorIcon && author.bot ? React.createElement("span", { class: "betterMessageLinks AlignMiddle BotTag" }, React.createElement(BotTag, {})) : null;
 
 			let authorIcon = this.props.settings.showAuthorIcon ? React.createElement("img", { src: `https://cdn.discordapp.com/avatars/${author.id}/${author.avatar}.webp`, class: "replyAvatar-1K9Wmr betterMessageLinks AlignMiddle Icon" }) : null;
 			let guildIcon = null;
@@ -321,9 +321,9 @@ module.exports = !global.ZeresPluginLibrary ? class {
 
 			let attachmentIcon = null;
 			let attachment = null;
-			if (message.attachments.length > 0) {
+			if (message.attachments.length > 0 || message.embeds.length > 0) {
 				attachmentIcon = React.createElement(ImagePlaceHolder, { width: "20px", height: "20px", class: "betterMessageLinks AlignMiddle" })
-				attachment = React.createElement("img", {class: "betterMessageLinks AlignMiddle Image", src: message.attachments[0].url});
+				attachment = message.attachments.length > 0 ? React.createElement("img", { class: "betterMessageLinks AlignMiddle Image", src: message.attachments[0].url }) : null;
 			}
 
 			let messagePreview = React.createElement("div", {
@@ -331,16 +331,21 @@ module.exports = !global.ZeresPluginLibrary ? class {
 				children: [
 					guildIcon,
 					authorIcon,
+					botIcon,
 					mention,
 					attachmentIcon,
 					React.createElement("br", {}),
 					messageContent,
+					attachment !== null ? React.createElement("br", {}) : null,
 					attachment,
 				]
 			});
 
 			let newLink = this.wrapInTooltip(messagePreview, messageReplace, TooltipWrapper.Colors.PRIMARY);
 
+			// newLink.props.forceOpen = true;
+
+			console.log(newLink)
 			return newLink
 		}
 
