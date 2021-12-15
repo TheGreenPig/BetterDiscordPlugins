@@ -23,16 +23,16 @@
 			"discord_id": "324622488644616195",
 			"github_username": "Juby210"
 		}],
-		"version": "1.2.4",
+		"version": "1.2.5",
 		"description": "Instead of just showing the long and useless discord message link, make it smaller and add a preview.",
 		"github_raw": "https://raw.githubusercontent.com/TheGreenPig/BetterDiscordPlugins/main/BetterMessageLinks/BetterMessageLinks.plugin.js"
 	},
 	"changelog": [
 		{
-			"title": "Added:",
-			"type": "Added",
+			"title": "Fixed:",
+			"type": "fixed",
 			"items": [
-				"Added gif support",
+				"Fixed error where Attachment Links display the message replace if the attachment replace is empty.",
 			]
 		},
 	],
@@ -228,7 +228,7 @@ module.exports = !global.ZeresPluginLibrary ? class {
 			if (this.props.attachmentLink && this.props.settings.attachmentReplaceText !== "") {
 				messageReplace.props.children[0] = this.props.settings.attachmentReplaceText;
 			}
-			else if (this.props.settings.messageReplaceText !== "") {
+			else if (!this.props.attachmentLink && this.props.settings.messageReplaceText !== "") {
 				messageReplace.props.children[0] = this.props.settings.messageReplaceText;
 			}
 
