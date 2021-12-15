@@ -223,6 +223,7 @@ module.exports = !global.ZeresPluginLibrary ? class {
 		}
 		render() {
 			let messageReplace = this.props.original;
+			messageReplace.props.class = `betterMessageLinks Link`
 
 			if (this.props.attachmentLink && this.props.settings.attachmentReplaceText !== "") {
 				messageReplace.props.children[0] = this.props.settings.attachmentReplaceText;
