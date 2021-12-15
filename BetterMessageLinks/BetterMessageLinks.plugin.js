@@ -5,7 +5,7 @@
  * @authorLink https://github.com/TheGreenPig
  * @source https://github.com/TheGreenPig/BetterDiscordPlugins/main/BetterMessageLinks/BetterMessageLinks.plugin.js
  */
-const config = {
+ const config = {
 	"info": {
 		"name": "BetterMessageLinks",
 		"authors": [{
@@ -32,8 +32,7 @@ const config = {
 			"title": "Added:",
 			"type": "Added",
 			"items": [
-				"Bot tag",
-				"Icon for embed",
+				"Added gif support",
 			]
 		},
 	],
@@ -144,7 +143,6 @@ module.exports = !global.ZeresPluginLibrary ? class {
 	const RenderMessageMarkupToASTModule = WebpackModules.getByProps("renderMessageMarkupToAST");
 	let cache = {};
 	let lastFetch = 0;
-	let displayCharacters = 500;
 
 	async function getMsg(channelId, messageId) {
 		let message = GetMessageModule.getMessage(channelId, messageId) || cache[messageId]
@@ -233,7 +231,6 @@ module.exports = !global.ZeresPluginLibrary ? class {
 				messageReplace.props.children[0] = this.props.settings.messageReplaceText;
 			}
 
-
 			if (!this.state) {
 				return this.wrapInTooltip("Loading...", messageReplace, "yellow")
 			}
@@ -295,8 +292,10 @@ module.exports = !global.ZeresPluginLibrary ? class {
 				channelName = channel.rawRecipients.map((e) => e.username).slice(0, 3).join("-");
 			}
 			else {
-				guildName = message.guild.name;
-				guildId = message.guild.id;
+				if(message.guild) {
+					guildName = message.guild.name;
+					guildId = message.guild.id;
+				}
 				channelName = "#" + channel.name;
 			}
 
@@ -323,7 +322,26 @@ module.exports = !global.ZeresPluginLibrary ? class {
 			let attachment = null;
 			if (message.attachments.length > 0 || message.embeds.length > 0) {
 				attachmentIcon = React.createElement(ImagePlaceHolder, { width: "20px", height: "20px", class: "betterMessageLinks AlignMiddle" })
-				attachment = message.attachments.length > 0 ? React.createElement("img", { class: "betterMessageLinks AlignMiddle Image", src: message.attachments[0].url }) : null;
+
+				let isVideo = false;
+				let url = "";
+
+				if(message.attachments[0]?.content_type.startsWith("video") || message.embeds[0]?.video) {
+					isVideo = true;
+				}
+
+				if(message.attachments.length > 0) {
+					url = message.attachments[0].url
+				} 
+				else if(message.embeds.length > 0){
+					if(message.embeds[0].video) {
+						url = message.embeds[0].video.url
+					}
+					else if(message.embeds[0].image) {
+						url = message.embeds[0].image.proxyURL;
+					}
+				}
+				if(url) attachment = isVideo ? React.createElement("video", { class: "betterMessageLinks AlignMiddle Image", src:url, loop: true, autoPlay: true, muted:true}) : React.createElement("img", { class: "betterMessageLinks AlignMiddle Image", src:url})
 			}
 
 			let messagePreview = React.createElement("div", {
@@ -336,7 +354,6 @@ module.exports = !global.ZeresPluginLibrary ? class {
 					attachmentIcon,
 					React.createElement("br", {}),
 					messageContent,
-					attachment !== null ? React.createElement("br", {}) : null,
 					attachment,
 				]
 			});
@@ -344,8 +361,6 @@ module.exports = !global.ZeresPluginLibrary ? class {
 			let newLink = this.wrapInTooltip(messagePreview, messageReplace, TooltipWrapper.Colors.PRIMARY);
 
 			// newLink.props.forceOpen = true;
-
-			console.log(newLink)
 			return newLink
 		}
 
