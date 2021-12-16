@@ -293,7 +293,7 @@ module.exports = !global.ZeresPluginLibrary ? class {
 				channelName = channel.rawRecipients.map((e) => e.username).slice(0, 3).join("-");
 			}
 			else {
-				if(message.guild) {
+				if (message.guild) {
 					guildName = message.guild.name;
 					guildId = message.guild.id;
 				}
@@ -327,22 +327,33 @@ module.exports = !global.ZeresPluginLibrary ? class {
 				let isVideo = false;
 				let url = "";
 
-				if(message.attachments[0]?.content_type?.startsWith("video") || message.embeds[0]?.video) {
+				if (message.attachments[0]?.content_type?.startsWith("video") || message.embeds[0]?.video) {
 					isVideo = true;
 				}
 
-				if(message.attachments?.length > 0) {
+				if (message.attachments?.length > 0) {
 					url = message.attachments[0].url
-				} 
-				else if(message.embeds?.length > 0){
-					if(message.embeds[0]?.video) {
+				}
+				else if (message.embeds?.length > 0) {
+					if (message.embeds[0]?.video) {
 						url = message.embeds[0].video.url
 					}
-					else if(message.embeds[0]?.image) {
+					else if (message.embeds[0]?.image) {
 						url = message.embeds[0]?.image.proxyURL;
 					}
 				}
-				if(url) attachment = isVideo ? React.createElement("video", { class: "betterMessageLinks AlignMiddle Image", src:url, loop: true, autoPlay: true, muted:true}) : React.createElement("img", { class: "betterMessageLinks AlignMiddle Image", src:url})
+				if (url) attachment = isVideo ?
+					React.createElement("video",
+						{
+							class: "betterMessageLinks AlignMiddle Image",
+							src: url,
+							loop: true, autoPlay: true, muted: true
+						})
+					: React.createElement("img",
+						{
+							class: "betterMessageLinks AlignMiddle Image",
+							src: url,
+						})
 			}
 
 			let messagePreview = React.createElement("div", {
