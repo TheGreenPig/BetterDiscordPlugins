@@ -23,7 +23,7 @@
 			"discord_id": "324622488644616195",
 			"github_username": "Juby210"
 		}],
-		"version": "1.2.5",
+		"version": "1.2.6",
 		"description": "Instead of just showing the long and useless discord message link, make it smaller and add a preview.",
 		"github_raw": "https://raw.githubusercontent.com/TheGreenPig/BetterDiscordPlugins/main/BetterMessageLinks/BetterMessageLinks.plugin.js"
 	},
@@ -32,7 +32,8 @@
 			"title": "Fixed:",
 			"type": "fixed",
 			"items": [
-				"Fixed error where Attachment Links display the message replace if the attachment replace is empty.",
+				"Fixed the `property 'startsWith' of undefined` error",
+				"Slightly better profile picture loading",
 			]
 		},
 	],
@@ -313,7 +314,7 @@ module.exports = !global.ZeresPluginLibrary ? class {
 			let mention = React.createElement("span", { className: "betterMessageLinks Author AlignMiddle" }, author.username + ":");
 			let botIcon = this.props.settings.showAuthorIcon && author.bot ? React.createElement("span", { class: "betterMessageLinks AlignMiddle BotTag" }, React.createElement(BotTag, {})) : null;
 
-			let authorIcon = this.props.settings.showAuthorIcon ? React.createElement("img", { src: `https://cdn.discordapp.com/avatars/${author.id}/${author.avatar}.webp`, class: "replyAvatar-1K9Wmr betterMessageLinks AlignMiddle Icon" }) : null;
+			let authorIcon = this.props.settings.showAuthorIcon ? React.createElement("img", { src: author.getAvatarURL(), class: "replyAvatar-1K9Wmr betterMessageLinks AlignMiddle Icon" }) : null;
 			let guildIcon = null;
 			if (this.props.settings.showGuildIcon && message.guild?.icon && message.guild.id !== ZLibrary.DiscordModules.SelectedGuildStore.getGuildId()) {
 				guildIcon = React.createElement("img", { src: `https://cdn.discordapp.com/icons/${message.guild.id}/${message.guild.icon}.webp`, class: "replyAvatar-1K9Wmr betterMessageLinks AlignMiddle Icon" })
