@@ -328,7 +328,7 @@ module.exports = !global.ZeresPluginLibrary ? class {
 				let isVideo = false;
 				let url = "";
 
-				if (message.attachments[0]?.content_type?.startsWith("video") || message.embeds[0]?.video) {
+				if ((message.attachments[0]?.content_type && message.attachments[0]?.content_type?.startsWith("video")) || message.embeds[0]?.video) {
 					isVideo = true;
 				}
 
