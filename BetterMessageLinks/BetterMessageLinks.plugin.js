@@ -23,17 +23,16 @@
 			"discord_id": "324622488644616195",
 			"github_username": "Juby210"
 		}],
-		"version": "1.2.6",
+		"version": "1.3.0",
 		"description": "Instead of just showing the long and useless discord message link, make it smaller and add a preview.",
 		"github_raw": "https://raw.githubusercontent.com/TheGreenPig/BetterDiscordPlugins/main/BetterMessageLinks/BetterMessageLinks.plugin.js"
 	},
 	"changelog": [
 		{
-			"title": "Fixed:",
+			"title": "Added:",
 			"type": "fixed",
 			"items": [
-				"Fixed the `property 'startsWith' of undefined` error",
-				"Slightly better profile picture loading",
+				`Added progress bar to loading messages. **Please give me feedback** either via Discord or on Github if you would change the design etc. because I'm really bad at making things look good. You can always style and customize everything in your custom CSS tab, there should be a class on pretty much every element, otherwise let me know!`
 			]
 		},
 	],
@@ -116,12 +115,22 @@ module.exports = !global.ZeresPluginLibrary ? class {
 		font-size: 1.1em;
 		padding-right: 3px;
 	}
+	.betterMessageLinks.AlignMiddle.Loading.Line{
+		transition: stroke-dashoffset 1s ease;
+	}
+	.betterMessageLinks.AlignMiddle.Loading.Contour{
+		opacity: 0.4;
+	}
+	.betterMessageLinks.AlignMiddle.Loading.Container{
+		transform: rotate(-90deg);
+	}
 	`
 	const defaultSettings = {
 		messageReplaceText: "<Message>",
 		attachmentReplaceText: "<Attachment>",
 		showAuthorIcon: true,
 		showGuildIcon: true,
+		progressBar: true,
 		advancedTitle: `Author: $authorName, Guild: $guildName, Channel: $channelName, Id: $messageId at $timestamp`,
 	};
 	const validTitleValues = ["authorName", "guildName", "guildId", "channelName", "channelId", "messageId", "timestamp", "nsfw"]
@@ -144,9 +153,11 @@ module.exports = !global.ZeresPluginLibrary ? class {
 	const RenderMessageMarkupToASTModule = WebpackModules.getByProps("renderMessageMarkupToAST");
 	let cache = {};
 	let lastFetch = 0;
+	let linkQueue = [];
 
 	async function getMsg(channelId, messageId) {
 		let message = GetMessageModule.getMessage(channelId, messageId) || cache[messageId]
+
 		if (!message) {
 			if (lastFetch > Date.now() - 2500) await new Promise(r => setTimeout(r, 2500))
 			const data = await DiscordModules.APIModule.get({
@@ -178,15 +189,19 @@ module.exports = !global.ZeresPluginLibrary ? class {
 	const getMsgWithQueue = (() => {
 		let pending = Promise.resolve()
 
-		const run = async (channelId, messageId) => {
+		const run = async (channelId, messageId, component) => {
 			try {
 				await pending
 			} finally {
+				linkQueue.shift()
+				linkQueue.forEach(c => {
+					c.setState({ queue: linkQueue })
+				})
 				return getMsg(channelId, messageId)
 			}
 		}
 
-		return (channelId, messageId) => (pending = run(channelId, messageId))
+		return (channelId, messageId, component) => (pending = run(channelId, messageId, component))
 	})()
 
 	class BetterLink extends React.Component {
@@ -201,7 +216,9 @@ module.exports = !global.ZeresPluginLibrary ? class {
 				let channelId = numberMatches[numberMatches.length - 2];
 				let guildId = numberMatches.length > 2 ? numberMatches[numberMatches.length - 3] : undefined;
 
-				let message = await getMsgWithQueue(channelId, messageId);
+				linkQueue.push(this)
+				this.setState({ originalIndex: linkQueue.length})
+				let message = await getMsgWithQueue(channelId, messageId, this);
 				if (!message) return
 				message.guild = guildId ? GetGuildModule.getGuild(guildId) : "@me";
 				this.setState(message);
@@ -232,9 +249,62 @@ module.exports = !global.ZeresPluginLibrary ? class {
 			else if (!this.props.attachmentLink && this.props.settings.messageReplaceText !== "") {
 				messageReplace.props.children[0] = this.props.settings.messageReplaceText;
 			}
-
 			if (!this.state) {
 				return this.wrapInTooltip("Loading...", messageReplace, "yellow")
+			}
+
+			if (this.state.queue && !this.state.id) {
+				let loadedPercent = Math.round(((this.state.originalIndex - this.state.queue.indexOf(this)) / this.state.originalIndex) * 100);
+
+				const LoadingCircle = (percentage) => {
+					const r = 20;
+					const circ = 2 * Math.PI * r;
+					const strokePct = ((100 - percentage) * circ) / 100; 
+
+					return React.createElement("div", {},
+						React.createElement("span", { class: "betterMessageLinks AlignMiddle Loading Text" }, `Loading ${loadedPercent}% `),
+						React.createElement("svg", { class: "betterMessageLinks AlignMiddle Loading Container", width: 25, viewBox: "0 0 50 50" },
+							React.createElement("linearGradient", {
+								id: "betterMessageLinksGradient",
+								x1: "0%",
+								y1: "0%",
+								x2: "0%",
+								y2: "100%",
+							}, React.createElement("stop", {
+								offset: "0%", 
+								stopColor: "#2F997F", 
+							}),React.createElement("stop", {
+								offset: "100%", 
+								stopColor: "#026C99", 
+							})),
+							React.createElement("circle", {
+								class: "betterMessageLinks AlignMiddle Loading Contour",
+								r: r,
+								cx: 25,
+								cy: 25,
+								fill: "transparent",
+								stroke: "#656566",
+								strokeWidth: "5px",
+							}),
+							React.createElement("circle", {
+								class: "betterMessageLinks AlignMiddle Loading Line",
+								r: r,
+								cx: 25,
+								cy: 25,
+								fill: "transparent",
+								stroke: "url(#betterMessageLinksGradient)",
+								strokeWidth: "5px",
+								strokeDasharray: circ,
+								strokeDashoffset: strokePct,
+								strokeLinecap: "round",
+							}),
+						)
+					)
+
+				};
+				let loadingBar = this.props.settings.progressBar ? LoadingCircle(loadedPercent) : React.createElement("span", { class: "betterMessageLinks AlignMiddle Loading Text" }, `Loading ${loadedPercent}% `);
+
+				return this.wrapInTooltip(loadingBar, messageReplace, "yellow")
 			}
 			else if (this.state.ok === false) {
 				if (this.props.attachmentLink) {
@@ -328,7 +398,7 @@ module.exports = !global.ZeresPluginLibrary ? class {
 				let isVideo = false;
 				let url = "";
 
-				if ((message.attachments[0]?.content_type && message.attachments[0]?.content_type?.startsWith("video")) || message.embeds[0]?.video) {
+				if (message.attachments[0]?.content_type?.startsWith("video") || message.embeds[0]?.video) {
 					isVideo = true;
 				}
 
@@ -434,6 +504,9 @@ module.exports = !global.ZeresPluginLibrary ? class {
 				}),
 				new Switch("Show Guild icon", "Display the guild icon of the message next to the author icon if you aren't in the same guild as the linked message.", this.settings.showGuildIcon, (i) => {
 					this.settings.showGuildIcon = i;
+				}),
+				new Switch("Show progress bar", "Display a circular progress bar when loading a message.", this.settings.progressBar, (i) => {
+					this.settings.progressBar = i;
 				}),
 				new Textbox("Advanced link title", React.createElement("div", {}, "Changes the title of the link. Use $value to display specific values. Valid values: ", unorderedList), this.settings.advancedTitle, (i) => {
 					this.settings.advancedTitle = i;
