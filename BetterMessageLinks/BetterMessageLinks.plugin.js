@@ -23,19 +23,10 @@
 			"discord_id": "324622488644616195",
 			"github_username": "Juby210"
 		}],
-		"version": "1.3.0",
+		"version": "1.3.1",
 		"description": "Instead of just showing the long and useless discord message link, make it smaller and add a preview.",
 		"github_raw": "https://raw.githubusercontent.com/TheGreenPig/BetterDiscordPlugins/main/BetterMessageLinks/BetterMessageLinks.plugin.js"
 	},
-	"changelog": [
-		{
-			"title": "Added:",
-			"type": "fixed",
-			"items": [
-				`Added progress bar to loading messages. **Please give me feedback** either via Discord or on Github if you would change the design etc. because I'm really bad at making things look good. You can always style and customize everything in your custom CSS tab, there should be a class on pretty much every element, otherwise let me know!`
-			]
-		},
-	],
 }
 
 /* ----Useful links----
@@ -75,8 +66,7 @@ module.exports = !global.ZeresPluginLibrary ? class {
 	const customCSS = `
 	.betterMessageLinks.Tooltip {
 		max-width: 280px; 
-	  	max-height: 450px;;
-	  	overflow: hidden;
+	  	max-height: 450px;
 	}
 	.betterMessageLinks > em {
 		font-style: italic;
@@ -254,7 +244,8 @@ module.exports = !global.ZeresPluginLibrary ? class {
 			}
 
 			if (this.state.queue && !this.state.id) {
-				let loadedPercent = Math.round(((this.state.originalIndex - this.state.queue.indexOf(this)) / this.state.originalIndex) * 100);
+				let loadedPercent = Math.max(Math.min(Math.round(((this.state.originalIndex - this.state.queue.indexOf(this)) / this.state.originalIndex) * 100), 100), 0);
+				if(loadedPercent===100&&this.props.attachmentLink) return this.wrapInTooltip(this.props.original.props.href.split("/").slice(-1), messageReplace, TooltipWrapper.Colors.PRIMARY);
 
 				const LoadingCircle = (percentage) => {
 					const r = 20;
@@ -428,7 +419,7 @@ module.exports = !global.ZeresPluginLibrary ? class {
 			}
 
 			let messagePreview = React.createElement("div", {
-				class: "betterMessageLinks AlignMiddle",
+				class: "betterMessageLinks AlignMiddle Container",
 				children: [
 					guildIcon,
 					authorIcon,
@@ -442,8 +433,6 @@ module.exports = !global.ZeresPluginLibrary ? class {
 			});
 
 			let newLink = this.wrapInTooltip(messagePreview, messageReplace, TooltipWrapper.Colors.PRIMARY);
-
-			// newLink.props.forceOpen = true;
 			return newLink
 		}
 
