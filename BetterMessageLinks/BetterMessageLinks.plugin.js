@@ -67,6 +67,7 @@ module.exports = !global.ZeresPluginLibrary ? class {
 	.betterMessageLinks.Tooltip {
 		max-width: 280px; 
 	  	max-height: 450px;
+		overflow:hidden;
 	}
 	.betterMessageLinks > em {
 		font-style: italic;
