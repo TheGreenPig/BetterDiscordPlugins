@@ -136,7 +136,7 @@ module.exports = !global.ZeresPluginLibrary ? class {
 		padding-right: 3px;
 	}
 	.betterMessageLinks.AlignMiddle.Loading.Line{
-		transition: stroke-dashoffset 1s ease;
+		transition: stroke-dashoffset 1s ease!important;
 	}
 	.betterMessageLinks.AlignMiddle.Loading.Contour{
 		opacity: 0.4;
@@ -164,7 +164,7 @@ module.exports = !global.ZeresPluginLibrary ? class {
 
 	//Modules
 	const MessageContent = WebpackModules.getModule(m => m.type?.displayName === "MessageContent");
-	const GetMessageModule = DiscordModules.MessageStore;
+	const MessageStore = DiscordModules.MessageStore;
 	const GetGuildModule = DiscordModules.GuildStore;
 	const GetChannelModule = DiscordModules.ChannelStore;
 	const TooltipWrapper = WebpackModules.getByPrototypes("renderTooltip");
@@ -181,7 +181,7 @@ module.exports = !global.ZeresPluginLibrary ? class {
 	let linkQueue = [];
 
 	async function getMsg(channelId, messageId) {
-		let message = GetMessageModule.getMessage(channelId, messageId) || cache[messageId]
+		let message = MessageStore.getMessage(channelId, messageId) || cache[messageId]
 
 		if (!message) {
 			if (lastFetch > Date.now() - 2500) await new Promise(r => setTimeout(r, 2500))
@@ -229,6 +229,33 @@ module.exports = !global.ZeresPluginLibrary ? class {
 		return (channelId, messageId, component) => (pending = run(channelId, messageId, component))
 	})()
 
+	const wrapInTooltip = (tooltipText, child, color) => {
+		//this took me so long, I honestly might quit programming. But thanks Strencher (as always)
+		function HoveringComponent() {
+			const [isMouseOver, setMouseOver] = React.useState(false);
+			return React.createElement(Popout, {
+				shouldShow: isMouseOver,
+				position: Popout.Positions.TOP,
+				animation: Popout.Animation.NONE,
+				renderPopout: () => React.createElement("div", {
+					style: {
+						position: "relative",
+						left: "-25%", 
+						marginBottom: "-10px",
+					}
+				}, React.createElement("div", {
+					class: `${TooltipClasses.tooltip} ${TooltipClasses["tooltip" + color.charAt(0).toUpperCase() + color.slice(1)]} thin-1ybCId scrollerBase-289Jih betterMessageLinks AlignMiddle Tooltip`,
+				}, React.createElement("div", { class: TooltipClasses.tooltipContent }, tooltipText)))
+			}, () => React.createElement("span", {
+				onMouseEnter: () => setMouseOver(true),
+				onMouseLeave: () => setMouseOver(true),
+				style: { cursor: "pointer" }
+			}, child));
+		}
+
+		return React.createElement(HoveringComponent, {})
+	}
+
 	class BetterLink extends React.Component {
 		constructor(props) {
 			super(props)
@@ -249,46 +276,7 @@ module.exports = !global.ZeresPluginLibrary ? class {
 				this.setState(message);
 			}
 		}
-		wrapInTooltip(tooltipText, child, color) {
-			//this took me so long, I honestly might quit programming. But thanks Strencher (as always)
-			function HoveringComponent() {
-				const [isMouseOver, setMouseOver] = React.useState(false);
-				let el = React.createElement(Popout, {
-					shouldShow: isMouseOver,
-					position: Popout.Positions.TOP,
-					animation: Popout.Animation.NONE,
-					renderPopout: () => React.createElement("div", {
-						style: {
-							position: "relative",
-							left: "-25%", 
-							marginBottom: "-10px",
-						}
-					}, React.createElement("div", {
-						class: `${TooltipClasses.tooltip} ${TooltipClasses["tooltip" + color.charAt(0).toUpperCase() + color.slice(1)]} thin-1ybCId scrollerBase-289Jih betterMessageLinks AlignMiddle Tooltip`,
-					}, React.createElement("div", { class: TooltipClasses.tooltipContent }, tooltipText)))
-				}, () => React.createElement("span", {
-					onMouseEnter: () => setMouseOver(true),
-					style: { cursor: "pointer" }
-				}, child));
-				return el;
-			}
 
-			return React.createElement(HoveringComponent, {})
-
-			return React.createElement(TooltipWrapper, {
-				color: color,
-				tooltipClassName: "betterMessageLinks AlignMiddle Tooltip",
-				text: tooltipText,
-				disableTooltipPointerEvents: false,
-				children: (tipProps) => {
-					return React.createElement("span", Object.assign({
-						children: [
-							child
-						],
-					}, tipProps))
-				}
-			})
-		}
 		render() {
 			let messageReplace = this.props.original;
 			messageReplace.props.class = `betterMessageLinks Link`
@@ -300,12 +288,12 @@ module.exports = !global.ZeresPluginLibrary ? class {
 				messageReplace.props.children[0] = this.props.settings.messageReplaceText;
 			}
 			if (!this.state) {
-				return this.wrapInTooltip("Loading...", messageReplace, "yellow")
+				return wrapInTooltip("Loading...", messageReplace, "yellow")
 			}
 
 			if (this.state.queue && !this.state.id) {
 				let loadedPercent = Math.max(Math.min(Math.round(((this.state.originalIndex - this.state.queue.indexOf(this)) / this.state.originalIndex) * 100), 100), 0);
-				if (loadedPercent === 100 && this.props.attachmentLink) return this.wrapInTooltip(this.props.original.props.href.split("/").slice(-1), messageReplace, TooltipWrapper.Colors.PRIMARY);
+				if (loadedPercent === 100 && this.props.attachmentLink) return wrapInTooltip(this.props.original.props.href.split("/").slice(-1), messageReplace, TooltipWrapper.Colors.PRIMARY);
 
 				const LoadingCircle = (percentage) => {
 					const r = 20;
@@ -355,17 +343,17 @@ module.exports = !global.ZeresPluginLibrary ? class {
 				};
 				let loadingBar = this.props.settings.progressBar ? LoadingCircle(loadedPercent) : React.createElement("span", { class: "betterMessageLinks AlignMiddle Loading Text" }, `Loading ${loadedPercent}% `);
 
-				return this.wrapInTooltip(loadingBar, messageReplace, "yellow")
+				return wrapInTooltip(loadingBar, messageReplace, "yellow")
 			}
 			else if (this.state.ok === false) {
 				if (this.props.attachmentLink) {
 					//if it's an attachment, display the file name instead of an error 
 					let fileName = this.props.original.props.href.split("/").slice(-1);
 
-					return this.wrapInTooltip(fileName, messageReplace, TooltipWrapper.Colors.PRIMARY);
+					return wrapInTooltip(fileName, messageReplace, TooltipWrapper.Colors.PRIMARY);
 				}
 				if (this.state.body?.message) {
-					return this.wrapInTooltip(this.state.body?.message, messageReplace, "red")
+					return wrapInTooltip(this.state.body?.message, messageReplace, "red")
 				}
 				return messageReplace;
 			}
@@ -491,7 +479,7 @@ module.exports = !global.ZeresPluginLibrary ? class {
 				]
 			});
 
-			let newLink = this.wrapInTooltip(messagePreview, messageReplace, TooltipWrapper.Colors.PRIMARY);
+			let newLink = wrapInTooltip(messagePreview, messageReplace, TooltipWrapper.Colors.PRIMARY);
 
 			return newLink
 		}
