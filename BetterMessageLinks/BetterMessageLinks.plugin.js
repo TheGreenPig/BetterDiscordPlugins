@@ -23,26 +23,16 @@
 			"discord_id": "324622488644616195",
 			"github_username": "Juby210"
 		}],
-		"version": "1.4.0",
+		"version": "1.4.1",
 		"description": "Instead of just showing the long and useless discord message link, make it smaller and add a preview.",
 		"github_raw": "https://raw.githubusercontent.com/TheGreenPig/BetterDiscordPlugins/main/BetterMessageLinks/BetterMessageLinks.plugin.js",
 	},
 	"changelog": [
 		{
-			"title": "Added",
-			"type": "added",
-			"items": [
-				"Be able to turn off the replacement of message or attachment links (for compatibility with HideEmbedLink for example)",
-				"Completely reworked the preview Popup to allow scrolling, clicking on stuff and the Popup staying open when you hover over it (Thanks Strencher as always <3)",
-				"^ Because of this, the styling might be a little off. Please tell me if you notice anything that's different.",
-			]
-		},
-		{
 			"title": "Fixed",
 			"type": "fixed",
 			"items": [
-				"Fixed the css slightly to wrap codeblocks and display quotes correctly (Thanks fabJunior)",
-				"I'm aware that the loading bar for the messages isn't loading smoothly anymore, but I haven't figured out yet why. Please wait for me to fix it, or if you found a way to make the loading icon go smoothly, please let me know!",
+				"Fixed popouts not disappearing.",
 			]
 		},
 	],
