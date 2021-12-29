@@ -23,26 +23,29 @@
 			"discord_id": "324622488644616195",
 			"github_username": "Juby210"
 		}],
-		"version": "1.3.1",
+		"version": "1.4.0",
 		"description": "Instead of just showing the long and useless discord message link, make it smaller and add a preview.",
 		"github_raw": "https://raw.githubusercontent.com/TheGreenPig/BetterDiscordPlugins/main/BetterMessageLinks/BetterMessageLinks.plugin.js",
-		"changelog": [
-			{
-				title: "Added",
-				type: "added",
-				items: [
-					"Be able to turn off the replacement of message or attachment links (for compatibility with HideEmbedLink for example)",
-				]
-			},
-			{
-				title: "Fixed",
-				type: "fixed",
-				items: [
-					"Fixed the css slightly to wrap codeblocks and display quotes correctly (Thanks fabJunior)",
-				]
-			},
-		]
 	},
+	"changelog": [
+		{
+			"title": "Added",
+			"type": "added",
+			"items": [
+				"Be able to turn off the replacement of message or attachment links (for compatibility with HideEmbedLink for example)",
+				"Completely reworked the preview Popup to allow scrolling, clicking on stuff and the Popup staying open when you hover over it (Thanks Strencher as always <3)",
+				"^ Because of this, the styling might be a little off. Please tell me if you notice anything that's different.",
+			]
+		},
+		{
+			"title": "Fixed",
+			"type": "fixed",
+			"items": [
+				"Fixed the css slightly to wrap codeblocks and display quotes correctly (Thanks fabJunior)",
+				"I'm aware that the loading bar for the messages isn't loading smoothly anymore, but I haven't figured out yet why. Please wait for me to fix it, or if you found a way to make the loading icon go smoothly, please let me know!",
+			]
+		},
+	],
 }
 
 /* ----Useful links----
@@ -142,6 +145,7 @@ module.exports = !global.ZeresPluginLibrary ? class {
 		transform: rotate(-90deg);
 	}
 	`
+
 	const defaultSettings = {
 		ignoreMessage: false,
 		ignoreAttachment: false,
@@ -155,7 +159,7 @@ module.exports = !global.ZeresPluginLibrary ? class {
 	const validTitleValues = ["authorName", "guildName", "guildId", "channelName", "channelId", "messageId", "timestamp", "nsfw"]
 
 	//Settings and imports
-	const { Toasts, WebpackModules, Patcher, React, Settings, DiscordModules, ReactTools } = { ...Library, ...BdApi };
+	const { Toasts, WebpackModules, Patcher, React, Settings, DiscordModules, ReactTools, DiscordClasses, DiscordClassModules } = { ...Library, ...BdApi };
 	const { SettingPanel, Switch, Slider, RadioGroup, Textbox, SettingGroup } = Settings;
 
 	//Modules
@@ -169,7 +173,9 @@ module.exports = !global.ZeresPluginLibrary ? class {
 	const { stringify } = WebpackModules.getByProps('stringify', 'parse', 'encode');
 	const ImagePlaceHolder = WebpackModules.findByDisplayName("ImagePlaceholder");
 	const BotTag = WebpackModules.findByDisplayName("BotTag");
+	const Popout = WebpackModules.getByDisplayName("Popout");
 	const RenderMessageMarkupToASTModule = WebpackModules.getByProps("renderMessageMarkupToAST");
+	const TooltipClasses = DiscordClassModules.Tooltips;
 	let cache = {};
 	let lastFetch = 0;
 	let linkQueue = [];
@@ -244,6 +250,31 @@ module.exports = !global.ZeresPluginLibrary ? class {
 			}
 		}
 		wrapInTooltip(tooltipText, child, color) {
+			//this took me so long, I honestly might quit programming. But thanks Strencher (as always)
+			function HoveringComponent() {
+				const [isMouseOver, setMouseOver] = React.useState(false);
+				let el = React.createElement(Popout, {
+					shouldShow: isMouseOver,
+					position: Popout.Positions.TOP,
+					animation: Popout.Animation.NONE,
+					renderPopout: () => React.createElement("div", {
+						style: {
+							position: "relative",
+							left: "-25%", 
+							marginBottom: "-10px",
+						}
+					}, React.createElement("div", {
+						class: `${TooltipClasses.tooltip} ${TooltipClasses["tooltip" + color.charAt(0).toUpperCase() + color.slice(1)]} thin-1ybCId scrollerBase-289Jih betterMessageLinks AlignMiddle Tooltip`,
+					}, React.createElement("div", { class: TooltipClasses.tooltipContent }, tooltipText)))
+				}, () => React.createElement("span", {
+					onMouseEnter: () => setMouseOver(true),
+					style: { cursor: "pointer" }
+				}, child));
+				return el;
+			}
+
+			return React.createElement(HoveringComponent, {})
+
 			return React.createElement(TooltipWrapper, {
 				color: color,
 				tooltipClassName: "betterMessageLinks AlignMiddle Tooltip",
@@ -405,7 +436,7 @@ module.exports = !global.ZeresPluginLibrary ? class {
 
 			let authorIcon = this.props.settings.showAuthorIcon ? React.createElement("img", { src: author.getAvatarURL(), class: "replyAvatar-1K9Wmr betterMessageLinks AlignMiddle Icon" }) : null;
 			let guildIcon = null;
-			if (this.props.settings.showGuildIcon && message.guild?.icon && message.guild.id !== ZLibrary.DiscordModules.SelectedGuildStore.getGuildId()) {
+			if (this.props.settings.showGuildIcon && message.guild?.icon && message.guild.id !== DiscordModules.SelectedGuildStore.getGuildId()) {
 				guildIcon = React.createElement("img", { src: `https://cdn.discordapp.com/icons/${message.guild.id}/${message.guild.icon}.webp`, class: "replyAvatar-1K9Wmr betterMessageLinks AlignMiddle Icon" })
 			}
 
