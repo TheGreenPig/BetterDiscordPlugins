@@ -23,7 +23,7 @@
 			"discord_id": "324622488644616195",
 			"github_username": "Juby210"
 		}],
-		"version": "1.4.1",
+		"version": "1.4.2",
 		"description": "Instead of just showing the long and useless discord message link, make it smaller and add a preview.",
 		"github_raw": "https://raw.githubusercontent.com/TheGreenPig/BetterDiscordPlugins/main/BetterMessageLinks/BetterMessageLinks.plugin.js",
 	},
@@ -32,7 +32,10 @@
 			"title": "Fixed",
 			"type": "fixed",
 			"items": [
-				"Fixed popouts not disappearing.",
+				"A lot of refactoring of the code - hovering popouts and clicking them _should_ work now",
+				"Instead of a different link title, it's a footer in the Popout now, because that looks nicer I guess.",
+				"A loading animation that's nicer to look at.",
+				"No more ugly colors, because why?",
 			]
 		},
 	],
@@ -73,17 +76,31 @@ module.exports = !global.ZeresPluginLibrary ? class {
 } : (([Plugin, Library]) => {
 	//Custom css
 	const customCSS = `
-	.betterMessageLinks.Tooltip {
+	.betterMessageLinks.Popout {
 		max-width: 280px; 
 	  	max-height: 450px;
-		overflow:auto;  
+		overflow: auto;  
 		-webkit-user-select: text;
+		background: var(--background-tertiary);
+		border-radius: 4px;
+		padding: 1em;
+		padding-bottom: 0.6em;
+		color: var(--text-normal);
+		overflow-wrap: break-word;
+		word-wrap: break-word;
 	}
-	.betterMessageLinks.Tooltip::-webkit-scrollbar {
+	.betterMessageLinks.Popout::-webkit-scrollbar {
 		display:none;
 	}
 	.betterMessageLinks em {
 		font-style: italic;
+	}
+	.betterMessageLinks.Loading.Spinner {
+		float: right;
+		padding-left: 1.5em;
+	}
+	.betterMessageLinks.Loading.Text {
+		display:inline;
 	}
 	.betterMessageLinks strong {
 		font-weight: bold;
@@ -110,6 +127,11 @@ module.exports = !global.ZeresPluginLibrary ? class {
 		width: 25px;
 		height: 25px;
 	}
+	.betterMessageLinks.Footer{
+		color: var(--text-muted);
+		font-size: 0.6rem;
+		padding-top: 8px;
+	}
 	.betterMessageLinks.BotTag{
 		padding-right: 5px;
 	}
@@ -125,15 +147,6 @@ module.exports = !global.ZeresPluginLibrary ? class {
 		font-size: 1.1em;
 		padding-right: 3px;
 	}
-	.betterMessageLinks.AlignMiddle.Loading.Line{
-		transition: stroke-dashoffset 1s ease!important;
-	}
-	.betterMessageLinks.AlignMiddle.Loading.Contour{
-		opacity: 0.4;
-	}
-	.betterMessageLinks.AlignMiddle.Loading.Container{
-		transform: rotate(-90deg);
-	}
 	`
 
 	const defaultSettings = {
@@ -144,14 +157,15 @@ module.exports = !global.ZeresPluginLibrary ? class {
 		showAuthorIcon: true,
 		showGuildIcon: true,
 		progressBar: true,
-		advancedTitle: `Author: $authorName, Guild: $guildName, Channel: $channelName, Id: $messageId at $timestamp`,
+		advancedFooter: `$guildName, $channelName at $timestamp`,
 	};
-	const validTitleValues = ["authorName", "guildName", "guildId", "channelName", "channelId", "messageId", "timestamp", "nsfw"]
+	const validFooterValues = ["authorName", "guildName", "guildId", "channelName", "channelId", "messageId", "timestamp", "nsfw"]
 
 	//Settings and imports
-	const { Toasts, WebpackModules, Patcher, React, Settings, DiscordModules, ReactTools, DiscordClasses, DiscordClassModules } = { ...Library, ...BdApi };
+	const { Toasts, WebpackModules, Patcher, Settings, DiscordModules, ReactTools, DiscordClasses, DiscordClassModules } = { ...BdApi, ...Library };
 	const { SettingPanel, Switch, Slider, RadioGroup, Textbox, SettingGroup } = Settings;
-
+	/**@type {typeof import("react")} */
+	const React = DiscordModules.React;
 	//Modules
 	const MessageContent = WebpackModules.getModule(m => m.type?.displayName === "MessageContent");
 	const MessageStore = DiscordModules.MessageStore;
@@ -166,6 +180,8 @@ module.exports = !global.ZeresPluginLibrary ? class {
 	const Popout = WebpackModules.getByDisplayName("Popout");
 	const RenderMessageMarkupToASTModule = WebpackModules.getByProps("renderMessageMarkupToAST");
 	const TooltipClasses = DiscordClassModules.Tooltips;
+	const MarkdownModule = WebpackModules.getByProps("parseTopic");
+	const MaskedLink = WebpackModules.findByDisplayName("MaskedLink");
 	let cache = {};
 	let lastFetch = 0;
 	let linkQueue = [];
@@ -219,158 +235,115 @@ module.exports = !global.ZeresPluginLibrary ? class {
 		return (channelId, messageId, component) => (pending = run(channelId, messageId, component))
 	})()
 
-	const wrapInTooltip = (tooltipText, child, color) => {
-		//this took me so long, I honestly might quit programming. But thanks Strencher (as always)
-		function HoveringComponent() {
-			const [isMouseOver, setMouseOver] = React.useState(false);
-			return React.createElement(Popout, {
-				shouldShow: isMouseOver,
-				position: Popout.Positions.TOP,
-				animation: Popout.Animation.NONE,
-				renderPopout: () => React.createElement("div", {
-					style: {
-						position: "relative",
-						left: "-25%", 
-						marginBottom: "-10px",
-					}
-				}, React.createElement("div", {
-					class: `${TooltipClasses.tooltip} ${TooltipClasses["tooltip" + color.charAt(0).toUpperCase() + color.slice(1)]} thin-1ybCId scrollerBase-289Jih betterMessageLinks AlignMiddle Tooltip`,
-				}, React.createElement("div", { class: TooltipClasses.tooltipContent }, tooltipText)))
-			}, () => React.createElement("span", {
-				onMouseEnter: () => setMouseOver(true),
-				onMouseLeave: () => setMouseOver(true),
-				style: { cursor: "pointer" }
-			}, child));
-		}
-
-		return React.createElement(HoveringComponent, {})
-	}
 
 	class BetterLink extends React.Component {
 		constructor(props) {
 			super(props)
-			this.state = null;
+			this.state = { loaded: false, message: null };
 		}
 		async componentDidMount() {
-			if (!this.state) {
-				let numberMatches = this.props.original.props.href.split("/").filter((e) => /^\d+$/.test(e));
+			if (!this.state.loaded) {
+				let numberMatches = this.props.original.split("/").filter((e) => /^\d+$/.test(e));
 				let messageId = numberMatches[numberMatches.length - 1];
 				let channelId = numberMatches[numberMatches.length - 2];
 				let guildId = numberMatches.length > 2 ? numberMatches[numberMatches.length - 3] : undefined;
 
 				linkQueue.push(this)
-				this.setState({ originalIndex: linkQueue.length })
+				this.setState({ originalIndex: linkQueue.length, queue: linkQueue })
 				let message = await getMsgWithQueue(channelId, messageId, this);
 				if (!message) return
 				message.guild = guildId ? GetGuildModule.getGuild(guildId) : "@me";
-				this.setState(message);
+				this.setState({ loaded: true, message });
 			}
 		}
 
-		render() {
-			let messageReplace = this.props.original;
-			messageReplace.props.class = `betterMessageLinks Link`
+		renderLoading() {
+			let loadedPercent = Math.max(Math.min(Math.round(((this.state.originalIndex - this.state.queue.indexOf(this)) / this.state.originalIndex) * 100), 100), 0);
+			return React.createElement("div", { className: "betterMessageLinks AlignMiddle Loading" },
+				React.createElement("span", { className: "betterMessageLinks AlignMiddle Loading Text" }, `Loading ... ${loadedPercent}%`),
+				React.createElement(DiscordModules.Spinner, { className: "betterMessageLinks AlignMiddle Loading Spinner" })
+			)
 
-			if (this.props.attachmentLink && this.props.settings.attachmentReplaceText !== "") {
-				messageReplace.props.children[0] = this.props.settings.attachmentReplaceText;
-			}
-			else if (!this.props.attachmentLink && this.props.settings.messageReplaceText !== "") {
-				messageReplace.props.children[0] = this.props.settings.messageReplaceText;
-			}
-			if (!this.state) {
-				return wrapInTooltip("Loading...", messageReplace, "yellow")
-			}
+		}
 
-			if (this.state.queue && !this.state.id) {
-				let loadedPercent = Math.max(Math.min(Math.round(((this.state.originalIndex - this.state.queue.indexOf(this)) / this.state.originalIndex) * 100), 100), 0);
-				if (loadedPercent === 100 && this.props.attachmentLink) return wrapInTooltip(this.props.original.props.href.split("/").slice(-1), messageReplace, TooltipWrapper.Colors.PRIMARY);
+		renderHeader(message, hasAttachments) {
+			const { settings } = this.props;
+			const channel = GetChannelModule.getChannel(message.channel_id);
+			const guild = GetGuildModule.getGuild(channel?.guild_id);
 
-				const LoadingCircle = (percentage) => {
-					const r = 20;
-					const circ = 2 * Math.PI * r;
-					const strokePct = ((100 - percentage) * circ) / 100;
+			return React.createElement("div", {
+				className: "betterMessageLinks-header",
+				children: [
+					settings.showGuildIcon && guild && guild.id !== DiscordModules.SelectedGuildStore.getGuildId()
+						? React.createElement("img", { src: `https://cdn.discordapp.com/icons/${message.guild.id}/${message.guild.icon}.webp`, className: "replyAvatar-1K9Wmr betterMessageLinks AlignMiddle Icon" })
+						: null,
+					settings.showAuthorIcon
+						? React.createElement("img", { src: message.author.getAvatarURL(), className: "replyAvatar-1K9Wmr betterMessageLinks AlignMiddle Icon"})
+						: null,
+					settings.showAuthorIcon && message.author.bot
+						? React.createElement("span", { className: "betterMessageLinks AlignMiddle BotTag" }, React.createElement(BotTag, {}))
+						: null,
+					React.createElement("span", { className: "betterMessageLinks Author AlignMiddle" }, message.author.username + ":"),
+					hasAttachments
+						? React.createElement(ImagePlaceHolder, { width: "20px", height: "20px", class: "betterMessageLinks AlignMiddle" })
+						: null
+				]
+			})
+		}
 
-					return React.createElement("div", {},
-						React.createElement("span", { class: "betterMessageLinks AlignMiddle Loading Text" }, `Loading ${loadedPercent}% `),
-						React.createElement("svg", { class: "betterMessageLinks AlignMiddle Loading Container", width: 25, viewBox: "0 0 50 50" },
-							React.createElement("linearGradient", {
-								id: "betterMessageLinksGradient",
-								x1: "0%",
-								y1: "0%",
-								x2: "0%",
-								y2: "100%",
-							}, React.createElement("stop", {
-								offset: "0%",
-								stopColor: "#2F997F",
-							}), React.createElement("stop", {
-								offset: "100%",
-								stopColor: "#026C99",
-							})),
-							React.createElement("circle", {
-								class: "betterMessageLinks AlignMiddle Loading Contour",
-								r: r,
-								cx: 25,
-								cy: 25,
-								fill: "transparent",
-								stroke: "#656566",
-								strokeWidth: "5px",
-							}),
-							React.createElement("circle", {
-								class: "betterMessageLinks AlignMiddle Loading Line",
-								r: r,
-								cx: 25,
-								cy: 25,
-								fill: "transparent",
-								stroke: "url(#betterMessageLinksGradient)",
-								strokeWidth: "5px",
-								strokeDasharray: circ,
-								strokeDashoffset: strokePct,
-								strokeLinecap: "round",
-							}),
-						)
-					)
+		renderContent(message) {
+			let content = null;
 
-				};
-				let loadingBar = this.props.settings.progressBar ? LoadingCircle(loadedPercent) : React.createElement("span", { class: "betterMessageLinks AlignMiddle Loading Text" }, `Loading ${loadedPercent}% `);
-
-				return wrapInTooltip(loadingBar, messageReplace, "yellow")
-			}
-			else if (this.state.ok === false) {
-				if (this.props.attachmentLink) {
-					//if it's an attachment, display the file name instead of an error 
-					let fileName = this.props.original.props.href.split("/").slice(-1);
-
-					return wrapInTooltip(fileName, messageReplace, TooltipWrapper.Colors.PRIMARY);
-				}
-				if (this.state.body?.message) {
-					return wrapInTooltip(this.state.body?.message, messageReplace, "red")
-				}
-				return messageReplace;
-			}
-
-			let message = this.state;
-			let channel = GetChannelModule.getChannel(message.channel_id);
-			if (!channel) return messageReplace;
-
-			let messageContent = "";
 			if (this.props.attachmentLink) {
-				message.content = this.props.original.props.href.split("/").slice(-1);
-
-				messageContent = React.createElement("span", {
-					class: "betterMessageLinks AlignMiddle",
-					children: message.content
-				});
+				content = this.props.original.split("/").pop();
 			} else {
-				let formattedMessageArray = RenderMessageMarkupToASTModule.default(Object.assign({}, message), { renderMediaEmbeds: true, formatInline: false, isInteracting: true }).content;
-
-				formattedMessageArray = this.processNewLines(formattedMessageArray);
-
-				messageContent = React.createElement("span", {
-					class: "betterMessageLinks AlignMiddle",
-					children: formattedMessageArray
-				});
+				content = this.processNewLines(RenderMessageMarkupToASTModule.default(Object.assign({}, message), { renderMediaEmbeds: true, formatInline: false, isInteracting: true }).content);
 			}
 
+			return React.createElement("span", {
+				className: "betterMessageLinks AlignMiddle"
+			}, content);
+		}
+
+		renderAttachment(message) {
+			if (message.attachments.length > 0 || message.embeds.length > 0) {
+				let isVideo = false;
+				let url = "";
+
+				if (message.attachments[0]?.content_type?.startsWith("video") || message.embeds[0]?.video) {
+					isVideo = true;
+				}
+
+				if (message.attachments?.length > 0) {
+					url = message.attachments[0].url
+				}
+				else if (message.embeds?.length > 0) {
+					if (message.embeds[0]?.video) {
+						url = message.embeds[0].video.url
+					}
+					else if (message.embeds[0]?.image) {
+						url = message.embeds[0]?.image.proxyURL;
+					}
+				}
+				if (!url) return null;
+
+				return isVideo ?
+					React.createElement("video", {
+						className: "betterMessageLinks AlignMiddle Image",
+						src: url,
+						loop: true, autoPlay: true, muted: true,
+					})
+					: React.createElement("img", {
+						className: "betterMessageLinks AlignMiddle Image",
+						src: url,
+					})
+			}
+			return null;
+		}
+
+		renderBetterFooter(advancedFooter, message) {
+			if (advancedFooter === "") return;
+			let channel = GetChannelModule.getChannel(message.channel_id);
 			let author = message?.author;
 			let authorName = author.username;
 			let authorId = author.id;
@@ -399,79 +372,61 @@ module.exports = !global.ZeresPluginLibrary ? class {
 				channelName = "#" + channel.name;
 			}
 
-			if (this.props.settings.advancedTitle !== "") {
-				let title = this.props.settings.advancedTitle;
-				validTitleValues.forEach((value) => {
-					title = title.replace("$" + value, eval(value))
-				})
-				if (title.includes("$")) title = "Invalid variables set! Make sure you don't use $ unless it's a valid variable."
-				messageReplace.props.title = title;
-			}
+			let footer = advancedFooter;
+			validFooterValues.forEach((value) => {
+				footer = footer.replace("$" + value, eval(value))
+			})
+			if (footer.includes("$")) footer = "Invalid variables set! Make sure you don't use $ unless it's a valid variable."
+			return React.createElement("div", {
+				className: "betterMessageLinks Footer"
+			}, footer);
+		}
 
-
-			let mention = React.createElement("span", { className: "betterMessageLinks Author AlignMiddle" }, author.username + ":");
-			let botIcon = this.props.settings.showAuthorIcon && author.bot ? React.createElement("span", { class: "betterMessageLinks AlignMiddle BotTag" }, React.createElement(BotTag, {})) : null;
-
-			let authorIcon = this.props.settings.showAuthorIcon ? React.createElement("img", { src: author.getAvatarURL(), class: "replyAvatar-1K9Wmr betterMessageLinks AlignMiddle Icon" }) : null;
-			let guildIcon = null;
-			if (this.props.settings.showGuildIcon && message.guild?.icon && message.guild.id !== DiscordModules.SelectedGuildStore.getGuildId()) {
-				guildIcon = React.createElement("img", { src: `https://cdn.discordapp.com/icons/${message.guild.id}/${message.guild.icon}.webp`, class: "replyAvatar-1K9Wmr betterMessageLinks AlignMiddle Icon" })
-			}
-
-			let attachmentIcon = null;
-			let attachment = null;
-			if (message.attachments.length > 0 || message.embeds.length > 0) {
-				attachmentIcon = React.createElement(ImagePlaceHolder, { width: "20px", height: "20px", class: "betterMessageLinks AlignMiddle" })
-
-				let isVideo = false;
-				let url = "";
-
-				if (message.attachments[0]?.content_type?.startsWith("video") || message.embeds[0]?.video) {
-					isVideo = true;
-				}
-
-				if (message.attachments?.length > 0) {
-					url = message.attachments[0].url
-				}
-				else if (message.embeds?.length > 0) {
-					if (message.embeds[0]?.video) {
-						url = message.embeds[0].video.url
-					}
-					else if (message.embeds[0]?.image) {
-						url = message.embeds[0]?.image.proxyURL;
-					}
-				}
-				if (url) attachment = isVideo ?
-					React.createElement("video",
-						{
-							class: "betterMessageLinks AlignMiddle Image",
-							src: url,
-							loop: true, autoPlay: true, muted: true
-						})
-					: React.createElement("img",
-						{
-							class: "betterMessageLinks AlignMiddle Image",
-							src: url,
-						})
-			}
-
-			let messagePreview = React.createElement("div", {
-				class: "betterMessageLinks AlignMiddle Container",
+		renderMessage() {
+			const { message } = this.state;
+			let hasAttachments = message.attachments.length > 0 || message.embeds.length > 0;
+			return React.createElement("div", {
+				className: "betterMessageLinks AlignMiddle Container",
 				children: [
-					guildIcon,
-					authorIcon,
-					botIcon,
-					mention,
-					attachmentIcon,
-					React.createElement("br", {}),
-					messageContent,
-					attachment,
+					this.renderHeader(message, hasAttachments),
+					this.renderContent(message),
+					this.renderAttachment(message),
+					this.renderBetterFooter(this.props.settings.advancedFooter, message)
 				]
 			});
+		}
 
-			let newLink = wrapInTooltip(messagePreview, messageReplace, TooltipWrapper.Colors.PRIMARY);
+		render() {
+			let { settings } = this.props;
+			let attachmentLink =  this.props.attachmentLink;
 
-			return newLink
+			let messageReplace = this.props.original;
+			if (settings.messageReplaceText !== "" && !attachmentLink) {
+				messageReplace = settings.messageReplaceText;
+			} else if (settings.attachmentReplaceText !== "" && attachmentLink) {
+				messageReplace = settings.attachmentReplaceText;
+			}
+
+			return React.createElement(Popout, {
+				shouldShow: this.state.showPopout,
+				position: Popout.Positions.TOP,
+				align: Popout.Align.CENTER,
+				animation: Popout.Animation.TRANSLATE,
+				spacing: 0,
+				renderPopout: () => {
+					return React.createElement("div", {
+						className: "betterMessageLinks Popout",
+						onMouseEnter: () => this.setState({ showPopout: true }),
+						onMouseLeave: () => this.setState({ showPopout: false })
+					}, this.state.loaded ? this.renderMessage() : this.renderLoading())
+				}
+			}, () => React.createElement(MaskedLink, {
+				className: "betterMessageLinks Link",
+				href: this.props.original,
+				children: [messageReplace],
+				onMouseEnter: () => this.setState({ showPopout: true }),
+				onMouseLeave: () => this.setState({ showPopout: false })
+			}))
 		}
 
 		processNewLines(array) {
@@ -493,22 +448,18 @@ module.exports = !global.ZeresPluginLibrary ? class {
 			//inject css
 			BdApi.injectCSS(config.info.name, customCSS)
 			this.settings = this.loadSettings(defaultSettings);
-			//add a MessageContent patcher
-			Patcher.after(config.info.name, MessageContent, "type", (_, [props], ret) => {
-				if (ret?.props?.children[0].length > 0) {
-					ret.props.children[0].forEach((child, i) => {
-						if (/https:\/\/(ptb.|canary.)?discord.com\/channels\/(\d+|@me)\/\d+\/\d+/gi.test(child.props?.href) && !this.settings.ignoreMessage) {
-							ret.props.children[0][i] = React.createElement(BetterLink, { original: child, settings: this.settings });
-						} else if (/https:\/\/(media|cdn).discordapp.(com|net)\/attachments\/\d+\/\d+\/.+/gi.test(child.props?.href) && !this.settings.ignoreAttachment) {
-							ret.props.children[0][i] = React.createElement(BetterLink, { original: child, settings: this.settings, attachmentLink: true });
-						}
-					});
+
+			Patcher.after(MarkdownModule.defaultRules.link, "react", (_, [props], ret) => {
+				if (/https:\/\/(ptb.|canary.)?discord.com\/channels\/(\d+|@me)\/\d+\/\d+/gi.test(props.target) && !this.settings.ignoreMessage) {
+					return React.createElement(BetterLink, { original: props.target, settings: this.settings, key: config.info.name })
+				} else if (/https:\/\/(media|cdn).discordapp.(com|net)\/attachments\/\d+\/\d+\/.+/gi.test(props.target) && !this.settings.ignoreAttachment) {
+					return React.createElement(BetterLink, { original: props.target, settings: this.settings, attachmentLink: true, key: config.info.name });
 				}
 			})
 		}
 		getSettingsPanel() {
 			let listArray = [];
-			validTitleValues.forEach((value) => {
+			validFooterValues.forEach((value) => {
 				listArray.push(React.createElement("li", { class: "betterMessageLinks ListElement" },
 					React.createElement("span", { class: "betterMessageLinks ListElement Symbol" }, "$"),
 					value));
@@ -540,8 +491,8 @@ module.exports = !global.ZeresPluginLibrary ? class {
 				new Switch("Show progress bar", "Display a circular progress bar when loading a message.", this.settings.progressBar, (i) => {
 					this.settings.progressBar = i;
 				}),
-				new Textbox("Advanced link title", React.createElement("div", {}, "Changes the title of the link. Use $value to display specific values. Valid values: ", unorderedList), this.settings.advancedTitle, (i) => {
-					this.settings.advancedTitle = i;
+				new Textbox("Advanced link footer", React.createElement("div", {}, "Add a footer to the popout containing information about the message. Use $value to display specific values. Valid values: ", unorderedList), this.settings.advancedFooter, (i) => {
+					this.settings.advancedFooter = i;
 				}),
 			)
 
