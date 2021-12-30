@@ -3,7 +3,7 @@
  * @author AGreenPig
  * @updateUrl https://raw.githubusercontent.com/TheGreenPig/BetterDiscordPlugins/main/BetterMessageLinks/BetterMessageLinks.plugin.js
  * @authorLink https://github.com/TheGreenPig
- * @source https://github.com/TheGreenPig/BetterDiscordPlugins/main/BetterMessageLinks/BetterMessageLinks.plugin.js
+ * @source https://github.com/TheGreenPig/BetterDiscordPlugins/blob/main/BetterMessageLinks/BetterMessageLinks.plugin.js
  */
  const config = {
 	"info": {
@@ -23,7 +23,6 @@
 			"type": "fixed",
 			"items": [
 				"Added the error fallback for messages where fetching failed.",
-				"I'm sorry for the update spam, this should be the last Update for a while. Hopefully.",
 			]
 		},
 	],
@@ -65,16 +64,20 @@ module.exports = !global.ZeresPluginLibrary ? class {
 	//Custom css
 	const customCSS = `
 	.betterMessageLinks.Popout {
-		max-width: 280px; 
+		max-width: 280px;
+		font-size: 14px;
+		width: fit-content; 
 	  	max-height: 450px;
 		overflow: auto;  
 		-webkit-user-select: text;
-		background: var(--background-tertiary);
+		background: var(--background-floating);
 		border-radius: 4px;
 		padding: 1em;
 		color: var(--text-normal);
 		overflow-wrap: break-word;
 		word-wrap: break-word;
+		-webkit-box-shadow: var(--elevation-high);
+		box-shadow: var(--elevation-high);
 	}
 	.betterMessageLinks.Popout::-webkit-scrollbar {
 		display:none;
@@ -143,13 +146,14 @@ module.exports = !global.ZeresPluginLibrary ? class {
 		attachmentReplaceText: "<Attachment>",
 		showAuthorIcon: true,
 		showGuildIcon: true,
+		noDisplayIfSameGuild: true,
 		progressBar: true,
 		advancedFooter: `$guildName, $channelName at $timestamp`,
 	};
 	const validFooterValues = ["authorName", "guildName", "guildId", "channelName", "channelId", "messageId", "timestamp", "nsfw"]
 
 	//Settings and imports
-	const { Toasts, WebpackModules, Patcher, Settings, DiscordModules, ReactTools, DiscordClasses, DiscordClassModules } = { ...BdApi, ...Library };
+	const { Toasts, WebpackModules, Patcher, Settings, DiscordModules, ReactTools, DiscordClasses, DiscordClassModules, Utilities } = { ...BdApi, ...Library };
 	const { SettingPanel, Switch, Slider, RadioGroup, Textbox, SettingGroup } = Settings;
 	/**@type {typeof import("react")} */
 	const React = DiscordModules.React;
@@ -255,7 +259,7 @@ module.exports = !global.ZeresPluginLibrary ? class {
 
 		renderError(message) {
 			let content = "Unknown Error while trying to fetch message."
-			if(message.body?.message) {
+			if (message.body?.message) {
 				content = `Error: ${message.body?.message}`;
 			}
 			if (this.props.attachmentLink) {
@@ -270,22 +274,21 @@ module.exports = !global.ZeresPluginLibrary ? class {
 
 		renderHeader(message, hasAttachments) {
 			const { settings } = this.props;
-			const channel = GetChannelModule.getChannel(message.channel_id);
-			const guild = GetGuildModule.getGuild(channel?.guild_id);
 
 			return React.createElement("div", {
 				className: "betterMessageLinks-header",
 				children: [
-					settings.showGuildIcon && guild && guild.id !== DiscordModules.SelectedGuildStore.getGuildId()
+					settings.showGuildIcon && message.guild?.id && (message.guild?.id !== DiscordModules.SelectedGuildStore.getGuildId() || !settings.noDisplayIfSameGuild)
 						? React.createElement("img", { src: `https://cdn.discordapp.com/icons/${message.guild.id}/${message.guild.icon}.webp`, className: "replyAvatar-1K9Wmr betterMessageLinks AlignMiddle Icon" })
 						: null,
 					settings.showAuthorIcon
-						? React.createElement("img", { src: message.author.getAvatarURL(), className: "replyAvatar-1K9Wmr betterMessageLinks AlignMiddle Icon"})
+						? React.createElement("img", { src: message.author.getAvatarURL(), className: "replyAvatar-1K9Wmr betterMessageLinks AlignMiddle Icon" })
 						: null,
+					React.createElement("span", { className: "betterMessageLinks Author AlignMiddle" }, message.author.username),
 					settings.showAuthorIcon && message.author.bot
-						? React.createElement("span", { className: "betterMessageLinks AlignMiddle BotTag" }, React.createElement(BotTag, {}))
-						: null,
-					React.createElement("span", { className: "betterMessageLinks Author AlignMiddle" }, message.author.username + ":"),
+					? React.createElement("span", { className: "betterMessageLinks AlignMiddle BotTag" }, React.createElement(BotTag, {}))
+					: null,
+					React.createElement("span", { className: "betterMessageLinks Author AlignMiddle" }, ":"),
 					hasAttachments
 						? React.createElement(ImagePlaceHolder, { width: "20px", height: "20px", class: "betterMessageLinks AlignMiddle" })
 						: null
@@ -299,7 +302,7 @@ module.exports = !global.ZeresPluginLibrary ? class {
 			if (this.props.attachmentLink) {
 				content = this.props.original.split("/").pop();
 			} else {
-				content = RenderMessageMarkupToASTModule.default(Object.assign({}, message), { renderMediaEmbeds: true, formatInline: false, isInteracting: true }).content;
+				content = this.processNewLines(RenderMessageMarkupToASTModule.default(Object.assign({}, message), { renderMediaEmbeds: true, formatInline: false, isInteracting: true }).content);
 			}
 
 			return React.createElement("span", {
@@ -351,27 +354,30 @@ module.exports = !global.ZeresPluginLibrary ? class {
 			let authorId = author.id;
 			let guildName, guildId = "";
 			let channelName = "";
-			let channelId = channel.id;
+			let channelId = channel?.id;
 			let messageId = message.id;
 			let timestamp = new Date(message.timestamp).toLocaleString();
-			let nsfw = channel.nsfw;
+			let nsfw = channel?.nsfw;
 
-			if (channel.type === DiscordModules.DiscordConstants.ChannelTypes.DM) {
-				guildName = "DM";
-				guildId = "@me";
-				channelName = channel.rawRecipients[0].username;
-			}
-			else if (channel.type === DiscordModules.DiscordConstants.ChannelTypes.GROUP_DM) {
-				guildName = "DMs"
-				guildId = "@me";
-				channelName = channel.rawRecipients.map((e) => e.username).slice(0, 3).join("-");
-			}
-			else {
-				if (message.guild) {
-					guildName = message.guild.name;
-					guildId = message.guild.id;
+			if (channel) {
+				console.log(channel, message)
+				if (channel?.type === DiscordModules.DiscordConstants.ChannelTypes.DM) {
+					guildName = "DM";
+					guildId = "@me";
+					channelName = channel.rawRecipients[0].username;
 				}
-				channelName = "#" + channel.name;
+				else if (channel?.type === DiscordModules.DiscordConstants.ChannelTypes.GROUP_DM) {
+					guildName = "DMs"
+					guildId = "@me";
+					channelName = channel.rawRecipients.map((e) => e.username).slice(0, 3).join("-");
+				}
+				else {
+					if (message.guild) {
+						guildName = message.guild.name;
+						guildId = message.guild.id;
+					}
+					channelName = "#" + channel.name;
+				}
 			}
 
 			let footer = advancedFooter;
@@ -386,7 +392,8 @@ module.exports = !global.ZeresPluginLibrary ? class {
 
 		renderMessage() {
 			const { message } = this.state;
-			if(!message.ok && !message.id) return this.renderError(message);
+			if (!message.ok && !message.id) return this.renderError(message);
+
 			let hasAttachments = message.attachments?.length > 0 || message.embeds?.length > 0;
 			return React.createElement("div", {
 				className: "betterMessageLinks AlignMiddle Container",
@@ -401,13 +408,17 @@ module.exports = !global.ZeresPluginLibrary ? class {
 
 		render() {
 			let { settings } = this.props;
-			let attachmentLink =  this.props.attachmentLink;
+			let attachmentLink = this.props.attachmentLink;
 
 			let messageReplace = this.props.original;
-			if (settings.messageReplaceText !== "" && !attachmentLink) {
-				messageReplace = settings.messageReplaceText;
-			} else if (settings.attachmentReplaceText !== "" && attachmentLink) {
-				messageReplace = settings.attachmentReplaceText;
+			if (!this.props.replaceOverride) {
+				if (settings.messageReplaceText !== "" && !attachmentLink) {
+					messageReplace = settings.messageReplaceText;
+				} else if (settings.attachmentReplaceText !== "" && attachmentLink) {
+					messageReplace = settings.attachmentReplaceText;
+				}
+			} else {
+				messageReplace = this.props.replaceOverride;
 			}
 
 			return React.createElement(Popout, {
@@ -431,6 +442,20 @@ module.exports = !global.ZeresPluginLibrary ? class {
 				onMouseLeave: () => this.setState({ showPopout: false })
 			}))
 		}
+
+		processNewLines(array) {
+			let processedArray = [];
+			array.forEach((messageElement) => {
+				if (!messageElement.type && messageElement.includes("\n")) {
+					processedArray.push(messageElement.split("\n").map(e => React.createElement("div", {}, e)));
+				}
+				else {
+					processedArray.push(messageElement)
+				}
+			})
+			if (processedArray.length === 0) return array;
+			return processedArray;
+		}
 	}
 	return class BetterMessageLinks extends Plugin {
 		async onStart() {
@@ -439,10 +464,13 @@ module.exports = !global.ZeresPluginLibrary ? class {
 			this.settings = this.loadSettings(defaultSettings);
 
 			Patcher.after(MarkdownModule.defaultRules.link, "react", (_, [props], ret) => {
+				//check if it already is a masked link (the href and content aren't the same), if so, we don't want to change the text. (Can happen in embeds for example)
+				let isMaskedLink = props.content[0].content !== props.target
+
 				if (/https:\/\/(ptb.|canary.)?discord.com\/channels\/(\d+|@me)\/\d+\/\d+/gi.test(props.target) && !this.settings.ignoreMessage) {
-					return React.createElement(BetterLink, { original: props.target, settings: this.settings, key: config.info.name })
+					return React.createElement(BetterLink, { original: props.target, settings: this.settings, key: config.info.name, replaceOverride: isMaskedLink && props.content[0].content })
 				} else if (/https:\/\/(media|cdn).discordapp.(com|net)\/attachments\/\d+\/\d+\/.+/gi.test(props.target) && !this.settings.ignoreAttachment) {
-					return React.createElement(BetterLink, { original: props.target, settings: this.settings, attachmentLink: true, key: config.info.name });
+					return React.createElement(BetterLink, { original: props.target, settings: this.settings, attachmentLink: true, key: config.info.name, replaceOverride: isMaskedLink && props.content[0].content });
 				}
 			})
 		}
@@ -470,13 +498,20 @@ module.exports = !global.ZeresPluginLibrary ? class {
 				}, { placeholder: "<Attachment>" }),
 			)
 
+			let noDisplayIfSameGuildSwitch = new Switch("Don't display Guild icon, if in same Guild", "If you are currently in the same Guild as the message from the link, the icon of the Guild will not be displayed.", this.settings.noDisplayIfSameGuild, (i) => {
+				this.settings.noDisplayIfSameGuild = i;
+			})
+			noDisplayIfSameGuildSwitch.inputWrapper.className += " betterMessageLinks Settings noDisplayIfSameGuildSwitch"
+
 			let appearanceSettingsGroup = new SettingGroup("Appearance").append(
 				new Switch("Show Author icon", "Display the icon of the Message Author.", this.settings.showAuthorIcon, (i) => {
 					this.settings.showAuthorIcon = i;
 				}),
 				new Switch("Show Guild icon", "Display the guild icon of the message next to the author icon if you aren't in the same guild as the linked message.", this.settings.showGuildIcon, (i) => {
 					this.settings.showGuildIcon = i;
+					this.updateSettingsCSS();
 				}),
+				noDisplayIfSameGuildSwitch,
 				new Switch("Show progress bar", "Display a circular progress bar when loading a message.", this.settings.progressBar, (i) => {
 					this.settings.progressBar = i;
 				}),
@@ -485,10 +520,9 @@ module.exports = !global.ZeresPluginLibrary ? class {
 				}),
 			)
 
-
-			messageReplaceGroup.group.className += " betterMessageLinks Settings Message";
-			attachmentReplaceGroup.group.className += " betterMessageLinks Settings Attachment";
-			appearanceSettingsGroup.group.className += " betterMessageLinks Settings Appearance";
+			messageReplaceGroup.group.className += " betterMessageLinks SettingsGroup Message";
+			attachmentReplaceGroup.group.className += " betterMessageLinks SettingsGroup Attachment";
+			appearanceSettingsGroup.group.className += " betterMessageLinks SettingsGroup Appearance";
 
 			this.updateSettingsCSS()
 			//build the settings panel
@@ -508,18 +542,21 @@ module.exports = !global.ZeresPluginLibrary ? class {
 
 		}
 		updateSettingsCSS() {
-			let suffix = "";
+			let hideArray = [];
 			if (this.settings.ignoreMessage && this.settings.ignoreAttachment) {
-				suffix = `.betterMessageLinks.Settings {display:none;}`;
+				hideArray.push("SettingsGroup");
 			}
 			else if (this.settings.ignoreMessage) {
-				suffix = `.betterMessageLinks.Settings.Message {display:none;}`;
+				hideArray.push("SettingsGroup.Message");
 			}
 			else if (this.settings.ignoreAttachment) {
-				suffix = `.betterMessageLinks.Settings.Attachment {display:none;}`;
+				hideArray.push("SettingsGroup.Attachment");
 			}
-
-			BdApi.injectCSS(config.info.name, customCSS + suffix)
+			if (!this.settings.showGuildIcon) {
+				hideArray.push("Settings.noDisplayIfSameGuildSwitch");
+			}
+			let hideCss = hideArray.length > 0 ? hideArray.map(e => `.betterMessageLinks.${e}`).join(", ") + " {display:none;}" : "";
+			BdApi.injectCSS(config.info.name, customCSS + hideCss)
 		}
 
 
