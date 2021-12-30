@@ -384,7 +384,7 @@ module.exports = !global.ZeresPluginLibrary ? class {
 
 		renderMessage() {
 			const { message } = this.state;
-			let hasAttachments = message.attachments.length > 0 || message.embeds.length > 0;
+			let hasAttachments = message.attachments?.length > 0 || message.embeds?.length > 0;
 			return React.createElement("div", {
 				className: "betterMessageLinks AlignMiddle Container",
 				children: [
