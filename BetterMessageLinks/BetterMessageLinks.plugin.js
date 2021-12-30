@@ -13,7 +13,7 @@
 			"discord_id": "427179231164760066",
 			"github_username": "TheGreenPig"
 		}],
-		"version": "1.4.3",
+		"version": "1.4.4",
 		"description": "Instead of just showing the long and useless discord message link, make it smaller and add a preview. Thanks a ton Strencher for helping me refactor my code and Juby for making the message queueing system. ",
 		"github_raw": "https://raw.githubusercontent.com/TheGreenPig/BetterDiscordPlugins/main/BetterMessageLinks/BetterMessageLinks.plugin.js",
 	},
@@ -22,7 +22,9 @@
 			"title": "Fixed",
 			"type": "fixed",
 			"items": [
-				"Added the error fallback for messages where fetching failed.",
+				"Tooltip like css",
+				"Masked links (from embeds for example) don't get replaced",
+				"Newlines should be displaying now correctly",
 			]
 		},
 	],
@@ -459,6 +461,7 @@ module.exports = !global.ZeresPluginLibrary ? class {
 					tempArray.push(messageElement)
 				}
 			})
+			if(tempArray.length>0) processedArray.push(React.createElement("div", {}, tempArray.map(e=>React.createElement("span", {}, e))));
 			if (processedArray.length === 0) return array;
 			
 			return processedArray;
