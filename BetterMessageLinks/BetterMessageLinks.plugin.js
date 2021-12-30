@@ -12,19 +12,9 @@
 			"name": "AGreenPig",
 			"discord_id": "427179231164760066",
 			"github_username": "TheGreenPig"
-		}, {
-			"name": "Strencher",
-			"discord_id": "415849376598982656",
-			"github_username": "Strencher",
-			"twitter_username": "Strencher3"
-		},
-		{
-			"name": "Juby210",
-			"discord_id": "324622488644616195",
-			"github_username": "Juby210"
 		}],
-		"version": "1.4.2",
-		"description": "Instead of just showing the long and useless discord message link, make it smaller and add a preview.",
+		"version": "1.4.3",
+		"description": "Instead of just showing the long and useless discord message link, make it smaller and add a preview. Thanks a ton Strencher for helping me refactor my code and Juby for making the message queueing system. ",
 		"github_raw": "https://raw.githubusercontent.com/TheGreenPig/BetterDiscordPlugins/main/BetterMessageLinks/BetterMessageLinks.plugin.js",
 	},
 	"changelog": [
@@ -32,10 +22,8 @@
 			"title": "Fixed",
 			"type": "fixed",
 			"items": [
-				"A lot of refactoring of the code - hovering popouts and clicking them _should_ work now",
-				"Instead of a different link title, it's a footer in the Popout now, because that looks nicer I guess.",
-				"A loading animation that's nicer to look at.",
-				"No more ugly colors, because why?",
+				"Added the error fallback for messages where fetching failed.",
+				"I'm sorry for the update spam, this should be the last Update for a while. Hopefully.",
 			]
 		},
 	],
@@ -84,7 +72,6 @@ module.exports = !global.ZeresPluginLibrary ? class {
 		background: var(--background-tertiary);
 		border-radius: 4px;
 		padding: 1em;
-		padding-bottom: 0.6em;
 		color: var(--text-normal);
 		overflow-wrap: break-word;
 		word-wrap: break-word;
@@ -266,6 +253,21 @@ module.exports = !global.ZeresPluginLibrary ? class {
 
 		}
 
+		renderError(message) {
+			let content = "Unknown Error while trying to fetch message."
+			if(message.body?.message) {
+				content = `Error: ${message.body?.message}`;
+			}
+			if (this.props.attachmentLink) {
+				//fallback for attachments. If you don't have access to the server, at least the name gets displayed.
+				content = this.props.original.split("/").pop();
+			}
+			return React.createElement("div", { className: "betterMessageLinks AlignMiddle Error" },
+				React.createElement("span", { className: "betterMessageLinks AlignMiddle Loading Text" }, content),
+			)
+
+		}
+
 		renderHeader(message, hasAttachments) {
 			const { settings } = this.props;
 			const channel = GetChannelModule.getChannel(message.channel_id);
@@ -297,7 +299,7 @@ module.exports = !global.ZeresPluginLibrary ? class {
 			if (this.props.attachmentLink) {
 				content = this.props.original.split("/").pop();
 			} else {
-				content = this.processNewLines(RenderMessageMarkupToASTModule.default(Object.assign({}, message), { renderMediaEmbeds: true, formatInline: false, isInteracting: true }).content);
+				content = RenderMessageMarkupToASTModule.default(Object.assign({}, message), { renderMediaEmbeds: true, formatInline: false, isInteracting: true }).content;
 			}
 
 			return React.createElement("span", {
@@ -384,6 +386,7 @@ module.exports = !global.ZeresPluginLibrary ? class {
 
 		renderMessage() {
 			const { message } = this.state;
+			if(!message.ok && !message.id) return this.renderError(message);
 			let hasAttachments = message.attachments?.length > 0 || message.embeds?.length > 0;
 			return React.createElement("div", {
 				className: "betterMessageLinks AlignMiddle Container",
@@ -427,20 +430,6 @@ module.exports = !global.ZeresPluginLibrary ? class {
 				onMouseEnter: () => this.setState({ showPopout: true }),
 				onMouseLeave: () => this.setState({ showPopout: false })
 			}))
-		}
-
-		processNewLines(array) {
-			let processedArray = [];
-			array.forEach((messageElement) => {
-				if (!messageElement.type && messageElement.includes("\n")) {
-					processedArray.push(messageElement.split("\n").map(e => React.createElement("div", {}, e)));
-				}
-				else {
-					processedArray.push(messageElement)
-				}
-			})
-			if (processedArray.length === 0) return array;
-			return processedArray;
 		}
 	}
 	return class BetterMessageLinks extends Plugin {
