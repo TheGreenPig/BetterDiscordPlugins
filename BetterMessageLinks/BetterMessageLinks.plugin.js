@@ -286,8 +286,8 @@ module.exports = !global.ZeresPluginLibrary ? class {
 						: null,
 					React.createElement("span", { className: "betterMessageLinks Author AlignMiddle" }, message.author.username),
 					settings.showAuthorIcon && message.author.bot
-					? React.createElement("span", { className: "betterMessageLinks AlignMiddle BotTag" }, React.createElement(BotTag, {}))
-					: null,
+						? React.createElement("span", { className: "betterMessageLinks AlignMiddle BotTag" }, React.createElement(BotTag, {}))
+						: null,
 					React.createElement("span", { className: "betterMessageLinks Author AlignMiddle" }, ":"),
 					hasAttachments
 						? React.createElement(ImagePlaceHolder, { width: "20px", height: "20px", class: "betterMessageLinks AlignMiddle" })
@@ -360,7 +360,6 @@ module.exports = !global.ZeresPluginLibrary ? class {
 			let nsfw = channel?.nsfw;
 
 			if (channel) {
-				console.log(channel, message)
 				if (channel?.type === DiscordModules.DiscordConstants.ChannelTypes.DM) {
 					guildName = "DM";
 					guildId = "@me";
@@ -445,15 +444,23 @@ module.exports = !global.ZeresPluginLibrary ? class {
 
 		processNewLines(array) {
 			let processedArray = [];
+			let tempArray = [];
 			array.forEach((messageElement) => {
 				if (!messageElement.type && messageElement.includes("\n")) {
-					processedArray.push(messageElement.split("\n").map(e => React.createElement("div", {}, e)));
+					let split = messageElement.split("\n");
+					tempArray.push(split.shift());
+					processedArray.push(React.createElement("div", {}, tempArray.map(e=>React.createElement("span", {}, e))));
+					tempArray = [];
+					split.map(e => e ? React.createElement("div", {}, e) : React.createElement("br", {})).forEach(e => {
+						processedArray.push(e);
+					});;
 				}
 				else {
-					processedArray.push(messageElement)
+					tempArray.push(messageElement)
 				}
 			})
 			if (processedArray.length === 0) return array;
+			
 			return processedArray;
 		}
 	}
