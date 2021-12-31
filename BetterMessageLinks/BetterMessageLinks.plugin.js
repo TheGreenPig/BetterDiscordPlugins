@@ -22,7 +22,7 @@
 			"title": "Fixed",
 			"type": "fixed",
 			"items": [
-				"Tooltip like css",
+				"Tooltip-like css (thanks Disease)",
 				"Masked links (from embeds for example) don't get replaced",
 				"Newlines should be displaying now correctly",
 				"Sticker support",
@@ -82,9 +82,6 @@ module.exports = !global.ZeresPluginLibrary ? class {
 		-webkit-box-shadow: var(--elevation-high);
 		box-shadow: var(--elevation-high);
 	}
-	.betterMessageLinks.Popout::-webkit-scrollbar {
-		display:none;
-	}
 	.betterMessageLinks em {
 		font-style: italic;
 	}
@@ -104,14 +101,14 @@ module.exports = !global.ZeresPluginLibrary ? class {
 	.betterMessageLinks blockquote  {
 		max-width: calc(100% - 4px);
 	}
-	.betterMessageLinks.Image {
-		border-radius: 10px;
-		max-width: 255px;
-		padding-top: 5px;
-	}
+	
 	.betterMessageLinks.Author{
 		font-weight: bold;
-		padding-right: 5px;
+	}
+	.betterMessageLinks.Image {
+		border-radius: 10px;
+		max-width: 280px;
+		padding-top: 5px;
 	}
 	.betterMessageLinks.AlignMiddle{
 		vertical-align: middle;
@@ -126,6 +123,7 @@ module.exports = !global.ZeresPluginLibrary ? class {
 		padding-top: 8px;
 	}
 	.betterMessageLinks.BotTag{
+		padding-left: 5px;
 		padding-right: 5px;
 	}
 	.betterMessageLinks.List{
@@ -291,7 +289,7 @@ module.exports = !global.ZeresPluginLibrary ? class {
 					settings.showAuthorIcon && message.author.bot
 						? React.createElement("span", { className: "betterMessageLinks AlignMiddle BotTag" }, React.createElement(BotTag, {}))
 						: null,
-					React.createElement("span", { className: "betterMessageLinks Author AlignMiddle" }, ":"),
+					React.createElement("span", { className: "betterMessageLinks Author AlignMiddle", style:{paddingLeft:"0px"} }, ":"),
 					hasAttachments
 						? React.createElement(ImagePlaceHolder, { width: "20px", height: "20px", class: "betterMessageLinks AlignMiddle" })
 						: null
@@ -314,7 +312,7 @@ module.exports = !global.ZeresPluginLibrary ? class {
 		}
 
 		renderAttachment(message) {
-			if (message.attachments?.length > 0 || message.embeds?.length > 0 || message.stickerItems?.length > 0) {
+			if (message.attachments?.length > 0 || message.embeds?.length > 0 || message.sticker_items?.length > 0) {
 				let isVideo = false;
 				let url = "";
 
@@ -332,8 +330,8 @@ module.exports = !global.ZeresPluginLibrary ? class {
 					else if (message.embeds[0]?.image) {
 						url = message.embeds[0]?.image.proxyURL;
 					}
-				} else if(message.stickerItems?.length > 0) {
-					url = `https://media.discordapp.net/stickers/${message.stickerItems[0].id}.png`;
+				} else if(message.sticker_items?.length > 0) {
+					url = `https://media.discordapp.net/stickers/${message.sticker_items[0].id}.png`;
 				}
 				if (!url) return null;
 
@@ -398,7 +396,7 @@ module.exports = !global.ZeresPluginLibrary ? class {
 			const { message } = this.state;
 			if (!message.ok && !message.id) return this.renderError(message);
 
-			let hasAttachments = message.attachments?.length > 0 || message.embeds?.length > 0;
+			let hasAttachments = message.attachments?.length > 0 || message.embeds?.length > 0 ||  message.sticker_items?.length > 0;
 			return React.createElement("div", {
 				className: "betterMessageLinks AlignMiddle Container",
 				children: [
@@ -433,7 +431,7 @@ module.exports = !global.ZeresPluginLibrary ? class {
 				spacing: 0,
 				renderPopout: () => {
 					return React.createElement("div", {
-						className: "betterMessageLinks Popout",
+						className: "thin-1ybCId scrollerBase-289Jih betterMessageLinks Popout",
 						onMouseEnter: () => this.setState({ showPopout: true }),
 						onMouseLeave: () => this.setState({ showPopout: false })
 					}, this.state.loaded ? this.renderMessage() : this.renderLoading())
@@ -446,27 +444,21 @@ module.exports = !global.ZeresPluginLibrary ? class {
 				onMouseLeave: () => this.setState({ showPopout: false })
 			}))
 		}
-
 		processNewLines(array) {
 			let processedArray = [];
 			let tempArray = [];
 			array.forEach((messageElement) => {
 				if (!messageElement.type && messageElement.includes("\n")) {
+					//replaces \n in text with actual newline elements
 					let split = messageElement.split("\n");
-					tempArray.push(split.shift());
-					processedArray.push(React.createElement("div", {}, tempArray.map(e => React.createElement("span", {}, e))));
-					tempArray = [];
-					split.map(e => e ? React.createElement("div", {}, e) : React.createElement("br", {})).forEach(e => {
-						processedArray.push(e);
-					});;
+					let newLine = React.createElement("br", {});
+					processedArray.push([newLine].concat(...split.map(e => [e, newLine])).slice(1,-1))
 				}
 				else {
-					tempArray.push(messageElement)
+					processedArray.push(messageElement)
 				}
 			})
-			if (tempArray.length > 0) processedArray.push(React.createElement("div", {}, tempArray.map(e => React.createElement("span", {}, e))));
 			if (processedArray.length === 0) return array;
-
 			return processedArray;
 		}
 	}
@@ -478,7 +470,7 @@ module.exports = !global.ZeresPluginLibrary ? class {
 
 			Patcher.after(MarkdownModule.defaultRules.link, "react", (_, [props], ret) => {
 				//check if it already is a masked link (the href and content aren't the same), if so, we don't want to change the text. (Can happen in embeds for example)
-				let isMaskedLink = props.content[0].content !== props.target
+				let isMaskedLink = props.content[0].content !== props.target;
 
 				if (/https:\/\/(ptb.|canary.)?discord.com\/channels\/(\d+|@me)\/\d+\/\d+/gi.test(props.target) && !this.settings.ignoreMessage) {
 					return React.createElement(BetterLink, { original: props.target, settings: this.settings, key: config.info.name, replaceOverride: isMaskedLink && props.content[0].content })
