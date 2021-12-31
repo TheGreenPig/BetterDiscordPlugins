@@ -26,6 +26,7 @@
 				"Masked links (from embeds for example) don't get replaced",
 				"Newlines should be displaying now correctly",
 				"Sticker support",
+				"Message links in replies are formatted again",
 			]
 		},
 	],
@@ -289,7 +290,7 @@ module.exports = !global.ZeresPluginLibrary ? class {
 					settings.showAuthorIcon && message.author.bot
 						? React.createElement("span", { className: "betterMessageLinks AlignMiddle BotTag" }, React.createElement(BotTag, {}))
 						: null,
-					React.createElement("span", { className: "betterMessageLinks Author AlignMiddle", style:{paddingLeft:"0px"} }, ":"),
+					React.createElement("span", { className: "betterMessageLinks Author AlignMiddle", style: { paddingLeft: "0px" } }, ":"),
 					hasAttachments
 						? React.createElement(ImagePlaceHolder, { width: "20px", height: "20px", class: "betterMessageLinks AlignMiddle" })
 						: null
@@ -330,7 +331,7 @@ module.exports = !global.ZeresPluginLibrary ? class {
 					else if (message.embeds[0]?.image) {
 						url = message.embeds[0]?.image.proxyURL;
 					}
-				} else if(message.sticker_items?.length > 0) {
+				} else if (message.sticker_items?.length > 0) {
 					url = `https://media.discordapp.net/stickers/${message.sticker_items[0].id}.png`;
 				}
 				if (!url) return null;
@@ -396,7 +397,7 @@ module.exports = !global.ZeresPluginLibrary ? class {
 			const { message } = this.state;
 			if (!message.ok && !message.id) return this.renderError(message);
 
-			let hasAttachments = message.attachments?.length > 0 || message.embeds?.length > 0 ||  message.sticker_items?.length > 0;
+			let hasAttachments = message.attachments?.length > 0 || message.embeds?.length > 0 || message.sticker_items?.length > 0;
 			return React.createElement("div", {
 				className: "betterMessageLinks AlignMiddle Container",
 				children: [
@@ -452,7 +453,7 @@ module.exports = !global.ZeresPluginLibrary ? class {
 					//replaces \n in text with actual newline elements
 					let split = messageElement.split("\n");
 					let newLine = React.createElement("br", {});
-					processedArray.push([newLine].concat(...split.map(e => [e, newLine])).slice(1,-1))
+					processedArray.push([newLine].concat(...split.map(e => [e, newLine])).slice(1, -1))
 				}
 				else {
 					processedArray.push(messageElement)
@@ -469,17 +470,33 @@ module.exports = !global.ZeresPluginLibrary ? class {
 			this.settings = this.loadSettings(defaultSettings);
 
 			Patcher.after(MarkdownModule.defaultRules.link, "react", (_, [props], ret) => {
-				//check if it already is a masked link (the href and content aren't the same), if so, we don't want to change the text. (Can happen in embeds for example)
-				let isMaskedLink = props.content[0].content !== props.target;
-
-				if (/https:\/\/(ptb.|canary.)?discord.com\/channels\/(\d+|@me)\/\d+\/\d+/gi.test(props.target) && !this.settings.ignoreMessage) {
-					return React.createElement(BetterLink, { original: props.target, settings: this.settings, key: config.info.name, replaceOverride: isMaskedLink && props.content[0].content })
-				} else if (/https:\/\/(media|cdn).discordapp.(com|net)\/attachments\/\d+\/\d+\/.+/gi.test(props.target) && !this.settings.ignoreAttachment) {
-					return React.createElement(BetterLink, { original: props.target, settings: this.settings, attachmentLink: true, key: config.info.name, replaceOverride: isMaskedLink && props.content[0].content });
-				}
+				return this.handleLink(ret);
 			})
 			
+			//replied messages get checked extra. This isn't really nice code, but it works I guess.
+			Patcher.after(RepliedMessage, "default", (_, [props], ret) => {
+				if(props.content?.length > 0 ) {
+					props.content.forEach((element, i) => {
+						if(element.type?.displayName === "MaskedLink") {
+							props.content[i] = this.handleLink(element);
+						} 
+					});
+				}
+			})
+
 		}
+		handleLink(ret) {
+			//check if it already is a masked link (the href and content aren't the same), if so, we don't want to change the text. (Can happen in embeds for example)
+			let isMaskedLink = ret.props.children[0] !== ret.props.href;
+
+			if (/https:\/\/(ptb.|canary.)?discord.com\/channels\/(\d+|@me)\/\d+\/\d+/gi.test(ret.props.href) && !this.settings.ignoreMessage) {
+				return React.createElement(BetterLink, { original: ret.props.href, settings: this.settings, key: config.info.name, replaceOverride: isMaskedLink && ret.props.children[0] })
+			} else if (/https:\/\/(media|cdn).discordapp.(com|net)\/attachments\/\d+\/\d+\/.+/gi.test(ret.props.href) && !this.settings.ignoreAttachment) {
+				return React.createElement(BetterLink, { original: ret.props.href, settings: this.settings, attachmentLink: true, key: config.info.name, replaceOverride: isMaskedLink && ret.props.children[0] });
+			}
+			return ret;
+		}
+
 		getSettingsPanel() {
 			let listArray = [];
 			validFooterValues.forEach((value) => {
