@@ -25,6 +25,7 @@
 				"Tooltip like css",
 				"Masked links (from embeds for example) don't get replaced",
 				"Newlines should be displaying now correctly",
+				"Sticker support",
 			]
 		},
 	],
@@ -313,7 +314,7 @@ module.exports = !global.ZeresPluginLibrary ? class {
 		}
 
 		renderAttachment(message) {
-			if (message.attachments.length > 0 || message.embeds.length > 0) {
+			if (message.attachments?.length > 0 || message.embeds?.length > 0 || message.stickerItems?.length > 0) {
 				let isVideo = false;
 				let url = "";
 
@@ -331,6 +332,8 @@ module.exports = !global.ZeresPluginLibrary ? class {
 					else if (message.embeds[0]?.image) {
 						url = message.embeds[0]?.image.proxyURL;
 					}
+				} else if(message.stickerItems?.length > 0) {
+					url = `https://media.discordapp.net/stickers/${message.stickerItems[0].id}.png`;
 				}
 				if (!url) return null;
 
@@ -451,7 +454,7 @@ module.exports = !global.ZeresPluginLibrary ? class {
 				if (!messageElement.type && messageElement.includes("\n")) {
 					let split = messageElement.split("\n");
 					tempArray.push(split.shift());
-					processedArray.push(React.createElement("div", {}, tempArray.map(e=>React.createElement("span", {}, e))));
+					processedArray.push(React.createElement("div", {}, tempArray.map(e => React.createElement("span", {}, e))));
 					tempArray = [];
 					split.map(e => e ? React.createElement("div", {}, e) : React.createElement("br", {})).forEach(e => {
 						processedArray.push(e);
@@ -461,9 +464,9 @@ module.exports = !global.ZeresPluginLibrary ? class {
 					tempArray.push(messageElement)
 				}
 			})
-			if(tempArray.length>0) processedArray.push(React.createElement("div", {}, tempArray.map(e=>React.createElement("span", {}, e))));
+			if (tempArray.length > 0) processedArray.push(React.createElement("div", {}, tempArray.map(e => React.createElement("span", {}, e))));
 			if (processedArray.length === 0) return array;
-			
+
 			return processedArray;
 		}
 	}
