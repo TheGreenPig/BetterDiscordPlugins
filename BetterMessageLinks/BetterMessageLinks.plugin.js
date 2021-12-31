@@ -171,9 +171,9 @@ module.exports = !global.ZeresPluginLibrary ? class {
 	const BotTag = WebpackModules.findByDisplayName("BotTag");
 	const Popout = WebpackModules.getByDisplayName("Popout");
 	const RenderMessageMarkupToASTModule = WebpackModules.getByProps("renderMessageMarkupToAST");
-	const TooltipClasses = DiscordClassModules.Tooltips;
+	const RepliedMessage = WebpackModules.getModule(m => m && m.default && m.default.displayName == "RepliedMessage");
 	const MarkdownModule = WebpackModules.getByProps("parseTopic");
-	const MaskedLink = WebpackModules.findByDisplayName("MaskedLink");
+	const MaskedLinkComponent = WebpackModules.findByDisplayName("MaskedLink");
 	let cache = {};
 	let lastFetch = 0;
 	let linkQueue = [];
@@ -436,7 +436,7 @@ module.exports = !global.ZeresPluginLibrary ? class {
 						onMouseLeave: () => this.setState({ showPopout: false })
 					}, this.state.loaded ? this.renderMessage() : this.renderLoading())
 				}
-			}, () => React.createElement(MaskedLink, {
+			}, () => React.createElement(MaskedLinkComponent, {
 				className: "betterMessageLinks Link",
 				href: this.props.original,
 				children: [messageReplace],
@@ -478,6 +478,7 @@ module.exports = !global.ZeresPluginLibrary ? class {
 					return React.createElement(BetterLink, { original: props.target, settings: this.settings, attachmentLink: true, key: config.info.name, replaceOverride: isMaskedLink && props.content[0].content });
 				}
 			})
+			
 		}
 		getSettingsPanel() {
 			let listArray = [];
