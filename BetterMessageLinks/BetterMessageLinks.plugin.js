@@ -275,10 +275,6 @@ module.exports = !global.ZeresPluginLibrary ? class {
 			if (message.body?.message) {
 				content = `Error: ${message.body?.message}`;
 			}
-			if (this.props.attachmentLink) {
-				//fallback for attachments. If you don't have access to the server, at least the name gets displayed.
-				content = this.props.original.split("/").pop();
-			}
 			return React.createElement("div", { className: "betterMessageLinks AlignMiddle Error" },
 				React.createElement("span", { className: "betterMessageLinks AlignMiddle Loading Text" }, content),
 			)
@@ -429,8 +425,6 @@ module.exports = !global.ZeresPluginLibrary ? class {
 		}
 
 		renderMessage() {
-			const { message } = this.state;
-			if (!message.ok && !message.id) return this.renderError(message);
 			if(this.props.attachmentLink) {
 				return React.createElement("div", {
 					className: "betterMessageLinks AlignMiddle Container",
@@ -439,6 +433,8 @@ module.exports = !global.ZeresPluginLibrary ? class {
 					]
 				});
 			}
+			const { message } = this.state;
+			if (!message.ok && !message.id) return this.renderError(message);
 			let hasAttachments = message.attachments?.length > 0 || message.embeds?.length > 0 || message.sticker_items?.length > 0;
 			return React.createElement("div", {
 				className: "betterMessageLinks AlignMiddle Container",
@@ -477,7 +473,7 @@ module.exports = !global.ZeresPluginLibrary ? class {
 						className: "thin-1ybCId scrollerBase-289Jih betterMessageLinks Popout",
 						onMouseEnter: () => this.setState({ showPopout: true }),
 						onMouseLeave: () => this.setState({ showPopout: false })
-					}, this.state.loaded ? this.renderMessage() : this.renderLoading())
+					}, this.state.loaded || this.props.attachmentLink ? this.renderMessage() : this.renderLoading())
 				}
 			}, () => React.createElement(MaskedLinkComponent, {
 				className: "betterMessageLinks Link",
