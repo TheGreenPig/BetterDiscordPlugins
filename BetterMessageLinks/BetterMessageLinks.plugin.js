@@ -13,7 +13,7 @@
 			"discord_id": "427179231164760066",
 			"github_username": "TheGreenPig"
 		}],
-		"version": "1.4.4",
+		"version": "1.4.5",
 		"description": "Instead of just showing the long and useless discord message link, make it smaller and add a preview. Thanks a ton Strencher for helping me refactor my code and Juby for making the message queueing system. ",
 		"github_raw": "https://raw.githubusercontent.com/TheGreenPig/BetterDiscordPlugins/main/BetterMessageLinks/BetterMessageLinks.plugin.js",
 	},
@@ -22,11 +22,8 @@
 			"title": "Fixed",
 			"type": "fixed",
 			"items": [
-				"Tooltip-like css (thanks Disease)",
-				"Masked links (from embeds for example) don't get replaced",
-				"Newlines should be displaying now correctly",
-				"Sticker support",
-				"Message links in replies are formatted again",
+				"Fixed Attachment link preview",
+				"Added loading Spinner setting",
 			]
 		},
 	],
@@ -86,12 +83,21 @@ module.exports = !global.ZeresPluginLibrary ? class {
 	.betterMessageLinks em {
 		font-style: italic;
 	}
+	.betterMessageLinks.Settings.Spinner div.info-3LOr12 {
+		display: flex;
+	}
+	.betterMessageLinks.Settings.Spinner div.size14-e6ZScH:not(.description-3_Ncsb){
+		margin-left: auto;
+	}
+	.betterMessageLinks.Loading {
+		display: flex;
+		align-items: center;
+	}
 	.betterMessageLinks.Loading.Spinner {
-		float: right;
 		padding-left: 1.5em;
 	}
 	.betterMessageLinks.Loading.Text {
-		display:inline;
+		vertical-align: middle;
 	}
 	.betterMessageLinks strong {
 		font-weight: bold;
@@ -108,7 +114,7 @@ module.exports = !global.ZeresPluginLibrary ? class {
 	}
 	.betterMessageLinks.Image {
 		border-radius: 10px;
-		max-width: 280px;
+		max-width: 250px;
 		padding-top: 5px;
 	}
 	.betterMessageLinks.AlignMiddle{
@@ -140,6 +146,8 @@ module.exports = !global.ZeresPluginLibrary ? class {
 		padding-right: 3px;
 	}
 	`
+	
+	const spinnerTypes = ["wanderingCubes", "chasingDots", "pulsingEllipsis", "spinningCircle"]
 
 	const defaultSettings = {
 		ignoreMessage: false,
@@ -150,6 +158,7 @@ module.exports = !global.ZeresPluginLibrary ? class {
 		showGuildIcon: true,
 		noDisplayIfSameGuild: true,
 		progressBar: true,
+		spinner: 0,
 		advancedFooter: `$guildName, $channelName at $timestamp`,
 	};
 	const validFooterValues = ["authorName", "guildName", "guildId", "channelName", "channelId", "messageId", "timestamp", "nsfw"]
@@ -199,6 +208,7 @@ module.exports = !global.ZeresPluginLibrary ? class {
 				message = data.body[0]
 
 				if (!message) return
+
 				message.author = new User(message.author)
 				message.timestamp = new Timestamp(message.timestamp)
 			} else {
@@ -228,7 +238,6 @@ module.exports = !global.ZeresPluginLibrary ? class {
 		return (channelId, messageId, component) => (pending = run(channelId, messageId, component))
 	})()
 
-
 	class BetterLink extends React.Component {
 		constructor(props) {
 			super(props)
@@ -254,7 +263,9 @@ module.exports = !global.ZeresPluginLibrary ? class {
 			let loadedPercent = Math.max(Math.min(Math.round(((this.state.originalIndex - this.state.queue.indexOf(this)) / this.state.originalIndex) * 100), 100), 0);
 			return React.createElement("div", { className: "betterMessageLinks AlignMiddle Loading" },
 				React.createElement("span", { className: "betterMessageLinks AlignMiddle Loading Text" }, `Loading ... ${loadedPercent}%`),
-				React.createElement(DiscordModules.Spinner, { className: "betterMessageLinks AlignMiddle Loading Spinner" })
+				React.createElement("span", { className: "betterMessageLinks AlignMiddle Loading Spinner" }, 
+					React.createElement(DiscordModules.Spinner, {type:  spinnerTypes[this.props.settings.spinner]})
+					),
 			)
 
 		}
@@ -392,11 +403,42 @@ module.exports = !global.ZeresPluginLibrary ? class {
 				className: "betterMessageLinks Footer"
 			}, footer);
 		}
+		renderAttachmentLink(link) {
+			let validImageExtensions = ["jpg", "jpeg", "png", "gif", "gifv", "apng", "avif", "jfif", "pjpeg", "pjp", "svg", "webp"]
+			let validVideoExtensions = ["mp4", "webm", "ogg"];
+			let extension = link.split(".").pop();
+
+			let preview = null;
+			if(validVideoExtensions.includes(extension)) {
+				preview = React.createElement("video", {
+					className: "betterMessageLinks AlignMiddle Image",
+					src: link,
+					loop: true, autoPlay: true, muted: true,
+				})
+			}
+			else if(validImageExtensions.includes(extension)) {
+				preview = React.createElement("img", {
+					className: "betterMessageLinks AlignMiddle Image",
+					src: link,
+				})
+			}
+			return React.createElement("div", {className: "betterMessageLinks Author AlignMiddle"}, 
+				link.split("/").pop(),
+				preview	
+			)		
+		}
 
 		renderMessage() {
 			const { message } = this.state;
 			if (!message.ok && !message.id) return this.renderError(message);
-
+			if(this.props.attachmentLink) {
+				return React.createElement("div", {
+					className: "betterMessageLinks AlignMiddle Container",
+					children: [
+						this.renderAttachmentLink(this.props.original)
+					]
+				});
+			}
 			let hasAttachments = message.attachments?.length > 0 || message.embeds?.length > 0 || message.sticker_items?.length > 0;
 			return React.createElement("div", {
 				className: "betterMessageLinks AlignMiddle Container",
@@ -525,6 +567,34 @@ module.exports = !global.ZeresPluginLibrary ? class {
 				this.settings.noDisplayIfSameGuild = i;
 			})
 			noDisplayIfSameGuildSwitch.inputWrapper.className += " betterMessageLinks Settings noDisplayIfSameGuildSwitch"
+			
+			const spinnerSetting = [
+				{
+					name: "Wandering Cubes",
+					desc: React.createElement(DiscordModules.Spinner, {type: spinnerTypes[0]}, ),
+					value: 0
+				},
+				{
+					name: "Chasing Dots",
+					desc:  React.createElement(DiscordModules.Spinner, {type: spinnerTypes[1]}, ),
+					value: 1
+				},
+				{
+					name: "Pulsing Ellipsis",
+					desc:  React.createElement(DiscordModules.Spinner, {type: spinnerTypes[2]}, ),
+					value: 2
+				},
+				{
+					name: "Spinning Circle",
+					desc:  React.createElement(DiscordModules.Spinner, {type: spinnerTypes[3]}, ),
+					value: 3
+				},
+			]
+			
+			let spinnerRadio = new RadioGroup('Spinner', "Choose the spinner that gets displayed when the message is loading", this.settings.spinner || 0, spinnerSetting, (i) => {
+				this.settings.spinner = i;
+			})
+			spinnerRadio.inputWrapper.className += " betterMessageLinks Settings Spinner";
 
 			let appearanceSettingsGroup = new SettingGroup("Appearance").append(
 				new Switch("Show Author icon", "Display the icon of the Message Author.", this.settings.showAuthorIcon, (i) => {
@@ -538,6 +608,7 @@ module.exports = !global.ZeresPluginLibrary ? class {
 				new Switch("Show progress bar", "Display a circular progress bar when loading a message.", this.settings.progressBar, (i) => {
 					this.settings.progressBar = i;
 				}),
+				spinnerRadio,
 				new Textbox("Advanced link footer", React.createElement("div", {}, "Add a footer to the popout containing information about the message. Use $value to display specific values. Valid values: ", unorderedList), this.settings.advancedFooter, (i) => {
 					this.settings.advancedFooter = i;
 				}),
