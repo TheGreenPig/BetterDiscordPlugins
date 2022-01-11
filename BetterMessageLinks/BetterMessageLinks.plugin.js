@@ -13,7 +13,7 @@ const config = {
 			"discord_id": "427179231164760066",
 			"github_username": "TheGreenPig"
 		}],
-		"version": "1.4.7",
+		"version": "1.4.8",
 		"description": "Instead of just showing the long and useless discord message link, make it smaller and add a preview. Thanks a ton Strencher for helping me refactor my code and Juby for making the message queueing system. ",
 		"github_raw": "https://raw.githubusercontent.com/TheGreenPig/BetterDiscordPlugins/main/BetterMessageLinks/BetterMessageLinks.plugin.js",
 	},
@@ -22,7 +22,8 @@ const config = {
 			"title": "Fixed",
 			"type": "fixed",
 			"items": [
-				"Fixed the last few classes",
+				"Fixed `media` discord attachment links from not previewing messages.",
+				"Fixed the Spinners in the settings.",
 			]
 		},
 	],
@@ -85,10 +86,10 @@ module.exports = !global.ZeresPluginLibrary ? class {
 	.betterMessageLinks em {
 		font-style: italic;
 	}
-	.betterMessageLinks.Settings.Spinner div.info-3LOr12 {
+	.betterMessageLinks.Settings.Spinner div.info-2FZci4 {
 		display: flex;
 	}
-	.betterMessageLinks.Settings.Spinner div.size14-e6ZScH:not(.description-3_Ncsb){
+	.betterMessageLinks.Settings.Spinner div.size14-3fJ-ot:not(.description-30xx7u){
 		margin-left: auto;
 	}
 	.betterMessageLinks.Loading {
@@ -149,8 +150,7 @@ module.exports = !global.ZeresPluginLibrary ? class {
 	}
 	`
 
-	const spinnerTypes = ["wanderingCubes", "chasingDots", "pulsingEllipsis", "spinningCircle"]
-
+	
 	const defaultSettings = {
 		ignoreMessage: false,
 		ignoreAttachment: false,
@@ -164,7 +164,7 @@ module.exports = !global.ZeresPluginLibrary ? class {
 		advancedFooter: `$guildName, $channelName at $timestamp`,
 	};
 	const validFooterValues = ["authorName", "guildName", "guildId", "channelName", "channelId", "messageId", "timestamp", "nsfw"]
-
+	
 	//Settings and imports
 	const { Toasts, WebpackModules, Patcher, Settings, DiscordModules, ReactTools, DiscordClasses, DiscordClassModules, Utilities } = { ...BdApi, ...Library };
 	const { SettingPanel, Switch, Slider, RadioGroup, Textbox, SettingGroup } = Settings;
@@ -190,10 +190,11 @@ module.exports = !global.ZeresPluginLibrary ? class {
 	let cache = {};
 	let lastFetch = 0;
 	let linkQueue = [];
-
+	const spinnerTypes = Object.values(DiscordModules.Spinner.Type)
+	
 	async function getMsg(channelId, messageId) {
 		let message = MessageStore.getMessage(channelId, messageId) || cache[messageId]
-
+		
 		if (!message) {
 			if (lastFetch > Date.now() - 2500) await new Promise(r => setTimeout(r, 2500))
 			const data = await DiscordModules.APIModule.get({
@@ -533,7 +534,7 @@ module.exports = !global.ZeresPluginLibrary ? class {
 			if (/https:\/\/(ptb.|canary.)?discord(app)?.com\/channels\/(\d+|@me)\/\d+\/\d+/gi.test(ret.props.href) && !this.settings.ignoreMessage) {
 				return React.createElement(BetterLink, { original: ret.props.href, settings: this.settings, key: config.info.name, replaceOverride: isMaskedLink && ret.props.children[0] })
 			} else if (/https:\/\/(media|cdn).discordapp.(com|net)\/attachments\/\d+\/\d+\/.+/gi.test(ret.props.href) && !this.settings.ignoreAttachment) {
-				return React.createElement(BetterLink, { original: ret.props.href, settings: this.settings, attachmentLink: true, key: config.info.name, replaceOverride: isMaskedLink && ret.props.children[0] });
+				return React.createElement(BetterLink, { original: ret.props.href.split("?")[0], settings: this.settings, attachmentLink: true, key: config.info.name, replaceOverride: isMaskedLink && ret.props.children[0] });
 			}
 			return ret;
 		}
@@ -566,29 +567,17 @@ module.exports = !global.ZeresPluginLibrary ? class {
 				this.settings.noDisplayIfSameGuild = i;
 			})
 			noDisplayIfSameGuildSwitch.inputWrapper.className += " betterMessageLinks Settings noDisplayIfSameGuildSwitch"
-
-			const spinnerSetting = [
-				{
-					name: "Wandering Cubes",
-					desc: React.createElement(DiscordModules.Spinner, { type: spinnerTypes[0] },),
-					value: 0
-				},
-				{
-					name: "Chasing Dots",
-					desc: React.createElement(DiscordModules.Spinner, { type: spinnerTypes[1] },),
-					value: 1
-				},
-				{
-					name: "Pulsing Ellipsis",
-					desc: React.createElement(DiscordModules.Spinner, { type: spinnerTypes[2] },),
-					value: 2
-				},
-				{
-					name: "Spinning Circle",
-					desc: React.createElement(DiscordModules.Spinner, { type: spinnerTypes[3] },),
-					value: 3
-				},
-			]
+			
+			let spinnerSetting = []
+			spinnerTypes.forEach((spinnerType, i) => {
+				let name = spinnerType.replace(/([A-Z])/g, " $1");
+				name = name.charAt(0).toUpperCase() + name.slice(1);
+				spinnerSetting.push({
+					name: name,
+					desc: React.createElement(DiscordModules.Spinner, { type: spinnerType },),
+					value: i
+				})
+			})
 
 			let spinnerRadio = new RadioGroup('Spinner', "Choose the spinner that gets displayed when the message is loading", this.settings.spinner || 0, spinnerSetting, (i) => {
 				this.settings.spinner = i;
