@@ -13,7 +13,7 @@ const config = {
 			"discord_id": "427179231164760066",
 			"github_username": "TheGreenPig"
 		}],
-		"version": "1.4.6",
+		"version": "1.4.7",
 		"description": "Instead of just showing the long and useless discord message link, make it smaller and add a preview. Thanks a ton Strencher for helping me refactor my code and Juby for making the message queueing system. ",
 		"github_raw": "https://raw.githubusercontent.com/TheGreenPig/BetterDiscordPlugins/main/BetterMessageLinks/BetterMessageLinks.plugin.js",
 	},
@@ -22,8 +22,7 @@ const config = {
 			"title": "Fixed",
 			"type": "fixed",
 			"items": [
-				"Should fix the issues from the latest Discord update. I haven't done extensive testing though, so please tell me if you find further bugs",
-				"I also changed the css of the links to look like mentions. I think it looks better now.",
+				"Fixed the last few classes",
 			]
 		},
 	],
@@ -474,7 +473,7 @@ module.exports = !global.ZeresPluginLibrary ? class {
 				spacing: 0,
 				renderPopout: () => {
 					return React.createElement("div", {
-						className: "thin-1ybCId scrollerBase-289Jih betterMessageLinks Popout",
+						className: "thin-31rlnD scrollerBase-_bVAAt betterMessageLinks Popout",
 						onMouseEnter: () => this.setState({ showPopout: true }),
 						onMouseLeave: () => this.setState({ showPopout: false })
 					}, this.state.loaded || this.props.attachmentLink ? this.renderMessage() : this.renderLoading())
