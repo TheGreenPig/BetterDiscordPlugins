@@ -292,10 +292,10 @@ module.exports = !global.ZeresPluginLibrary ? class {
 				className: "betterMessageLinks-header",
 				children: [
 					settings.showGuildIcon && message.guild?.id && (message.guild?.id !== DiscordModules.SelectedGuildStore.getGuildId() || !settings.noDisplayIfSameGuild)
-						? React.createElement("img", { src: `https://cdn.discordapp.com/icons/${message.guild.id}/${message.guild.icon}.webp`, className: "replyAvatar-1K9Wmr betterMessageLinks AlignMiddle Icon" })
+						? React.createElement("img", { src: `https://cdn.discordapp.com/icons/${message.guild.id}/${message.guild.icon}.webp`, className: "replyAvatar-sHd2sU betterMessageLinks AlignMiddle Icon" })
 						: null,
 					settings.showAuthorIcon
-						? React.createElement("img", { src: message.author.getAvatarURL(), className: "replyAvatar-1K9Wmr betterMessageLinks AlignMiddle Icon" })
+						? React.createElement("img", { src: message.author.getAvatarURL(), className: "replyAvatar-sHd2sU betterMessageLinks AlignMiddle Icon" })
 						: null,
 					React.createElement("span", { className: "betterMessageLinks Author AlignMiddle" }, message.author.username),
 					settings.showAuthorIcon && message.author.bot
