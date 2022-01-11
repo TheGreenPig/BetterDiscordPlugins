@@ -5,7 +5,7 @@
  * @authorLink https://github.com/TheGreenPig
  * @source https://github.com/TheGreenPig/BetterDiscordPlugins/blob/main/BetterMessageLinks/BetterMessageLinks.plugin.js
  */
- const config = {
+const config = {
 	"info": {
 		"name": "BetterMessageLinks",
 		"authors": [{
@@ -13,7 +13,7 @@
 			"discord_id": "427179231164760066",
 			"github_username": "TheGreenPig"
 		}],
-		"version": "1.4.5",
+		"version": "1.4.6",
 		"description": "Instead of just showing the long and useless discord message link, make it smaller and add a preview. Thanks a ton Strencher for helping me refactor my code and Juby for making the message queueing system. ",
 		"github_raw": "https://raw.githubusercontent.com/TheGreenPig/BetterDiscordPlugins/main/BetterMessageLinks/BetterMessageLinks.plugin.js",
 	},
@@ -22,8 +22,8 @@
 			"title": "Fixed",
 			"type": "fixed",
 			"items": [
-				"Fixed Attachment link preview",
-				"Added loading Spinner setting",
+				"Should fix the issues from the latest Discord update. I haven't done extensive testing though, so please tell me if you find further bugs",
+				"I also changed the css of the links to look like mentions. I think it looks better now.",
 			]
 		},
 	],
@@ -64,6 +64,9 @@ module.exports = !global.ZeresPluginLibrary ? class {
 } : (([Plugin, Library]) => {
 	//Custom css
 	const customCSS = `
+	.betterMessageLinks.Link {
+
+	}
 	.betterMessageLinks.Popout {
 		max-width: 280px;
 		font-size: 14px;
@@ -146,7 +149,7 @@ module.exports = !global.ZeresPluginLibrary ? class {
 		padding-right: 3px;
 	}
 	`
-	
+
 	const spinnerTypes = ["wanderingCubes", "chasingDots", "pulsingEllipsis", "spinningCircle"]
 
 	const defaultSettings = {
@@ -170,7 +173,8 @@ module.exports = !global.ZeresPluginLibrary ? class {
 	const React = DiscordModules.React;
 	//Modules
 	const MessageContent = WebpackModules.getModule(m => m.type?.displayName === "MessageContent");
-	const MessageStore = DiscordModules.MessageStore;
+	// const MessageStore = DiscordModules.MessageStore;
+	const MessageStore = WebpackModules.getByProps("hasCurrentUserSentMessage", "getMessage");
 	const GetGuildModule = DiscordModules.GuildStore;
 	const GetChannelModule = DiscordModules.ChannelStore;
 	const TooltipWrapper = WebpackModules.getByPrototypes("renderTooltip");
@@ -263,9 +267,9 @@ module.exports = !global.ZeresPluginLibrary ? class {
 			let loadedPercent = Math.max(Math.min(Math.round(((this.state.originalIndex - this.state.queue.indexOf(this)) / this.state.originalIndex) * 100), 100), 0);
 			return React.createElement("div", { className: "betterMessageLinks AlignMiddle Loading" },
 				React.createElement("span", { className: "betterMessageLinks AlignMiddle Loading Text" }, `Loading ... ${loadedPercent}%`),
-				React.createElement("span", { className: "betterMessageLinks AlignMiddle Loading Spinner" }, 
-					React.createElement(DiscordModules.Spinner, {type:  spinnerTypes[this.props.settings.spinner]})
-					),
+				React.createElement("span", { className: "betterMessageLinks AlignMiddle Loading Spinner" },
+					React.createElement(DiscordModules.Spinner, { type: spinnerTypes[this.props.settings.spinner] })
+				),
 			)
 
 		}
@@ -405,27 +409,27 @@ module.exports = !global.ZeresPluginLibrary ? class {
 			let extension = link.split(".").pop();
 
 			let preview = null;
-			if(validVideoExtensions.includes(extension)) {
+			if (validVideoExtensions.includes(extension)) {
 				preview = React.createElement("video", {
 					className: "betterMessageLinks AlignMiddle Image",
 					src: link,
 					loop: true, autoPlay: true, muted: true,
 				})
 			}
-			else if(validImageExtensions.includes(extension)) {
+			else if (validImageExtensions.includes(extension)) {
 				preview = React.createElement("img", {
 					className: "betterMessageLinks AlignMiddle Image",
 					src: link,
 				})
 			}
-			return React.createElement("div", {className: "betterMessageLinks Author AlignMiddle"}, 
+			return React.createElement("div", { className: "betterMessageLinks Author AlignMiddle" },
 				link.split("/").pop(),
-				preview	
-			)		
+				preview
+			)
 		}
 
 		renderMessage() {
-			if(this.props.attachmentLink) {
+			if (this.props.attachmentLink) {
 				return React.createElement("div", {
 					className: "betterMessageLinks AlignMiddle Container",
 					children: [
@@ -476,7 +480,7 @@ module.exports = !global.ZeresPluginLibrary ? class {
 					}, this.state.loaded || this.props.attachmentLink ? this.renderMessage() : this.renderLoading())
 				}
 			}, () => React.createElement(MaskedLinkComponent, {
-				className: "betterMessageLinks Link",
+				className: "betterMessageLinks Link mention",
 				href: this.props.original,
 				children: [messageReplace],
 				onMouseEnter: () => this.setState({ showPopout: true }),
@@ -510,14 +514,14 @@ module.exports = !global.ZeresPluginLibrary ? class {
 			Patcher.after(MarkdownModule.defaultRules.link, "react", (_, [props], ret) => {
 				return this.handleLink(ret);
 			})
-			
+
 			//replied messages get checked extra. This isn't really nice code, but it works I guess.
 			Patcher.after(RepliedMessage, "default", (_, [props], ret) => {
-				if(props.content?.length > 0 ) {
+				if (props.content?.length > 0) {
 					props.content.forEach((element, i) => {
-						if(element.type?.displayName === "MaskedLink") {
+						if (element.type?.displayName === "MaskedLink") {
 							props.content[i] = this.handleLink(element);
-						} 
+						}
 					});
 				}
 			})
@@ -527,7 +531,7 @@ module.exports = !global.ZeresPluginLibrary ? class {
 			//check if it already is a masked link (the href and content aren't the same), if so, we don't want to change the text. (Can happen in embeds for example)
 			let isMaskedLink = ret.props.children[0] !== ret.props.href;
 
-			if (/https:\/\/(ptb.|canary.)?discord.com\/channels\/(\d+|@me)\/\d+\/\d+/gi.test(ret.props.href) && !this.settings.ignoreMessage) {
+			if (/https:\/\/(ptb.|canary.)?discord(app)?.com\/channels\/(\d+|@me)\/\d+\/\d+/gi.test(ret.props.href) && !this.settings.ignoreMessage) {
 				return React.createElement(BetterLink, { original: ret.props.href, settings: this.settings, key: config.info.name, replaceOverride: isMaskedLink && ret.props.children[0] })
 			} else if (/https:\/\/(media|cdn).discordapp.(com|net)\/attachments\/\d+\/\d+\/.+/gi.test(ret.props.href) && !this.settings.ignoreAttachment) {
 				return React.createElement(BetterLink, { original: ret.props.href, settings: this.settings, attachmentLink: true, key: config.info.name, replaceOverride: isMaskedLink && ret.props.children[0] });
@@ -563,30 +567,30 @@ module.exports = !global.ZeresPluginLibrary ? class {
 				this.settings.noDisplayIfSameGuild = i;
 			})
 			noDisplayIfSameGuildSwitch.inputWrapper.className += " betterMessageLinks Settings noDisplayIfSameGuildSwitch"
-			
+
 			const spinnerSetting = [
 				{
 					name: "Wandering Cubes",
-					desc: React.createElement(DiscordModules.Spinner, {type: spinnerTypes[0]}, ),
+					desc: React.createElement(DiscordModules.Spinner, { type: spinnerTypes[0] },),
 					value: 0
 				},
 				{
 					name: "Chasing Dots",
-					desc:  React.createElement(DiscordModules.Spinner, {type: spinnerTypes[1]}, ),
+					desc: React.createElement(DiscordModules.Spinner, { type: spinnerTypes[1] },),
 					value: 1
 				},
 				{
 					name: "Pulsing Ellipsis",
-					desc:  React.createElement(DiscordModules.Spinner, {type: spinnerTypes[2]}, ),
+					desc: React.createElement(DiscordModules.Spinner, { type: spinnerTypes[2] },),
 					value: 2
 				},
 				{
 					name: "Spinning Circle",
-					desc:  React.createElement(DiscordModules.Spinner, {type: spinnerTypes[3]}, ),
+					desc: React.createElement(DiscordModules.Spinner, { type: spinnerTypes[3] },),
 					value: 3
 				},
 			]
-			
+
 			let spinnerRadio = new RadioGroup('Spinner', "Choose the spinner that gets displayed when the message is loading", this.settings.spinner || 0, spinnerSetting, (i) => {
 				this.settings.spinner = i;
 			})
