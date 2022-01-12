@@ -64,9 +64,6 @@ module.exports = !global.ZeresPluginLibrary ? class {
 } : (([Plugin, Library]) => {
 	//Custom css
 	const customCSS = `
-	.betterMessageLinks.Link {
-
-	}
 	.betterMessageLinks.Popout {
 		max-width: 280px;
 		font-size: 14px;
@@ -480,7 +477,7 @@ module.exports = !global.ZeresPluginLibrary ? class {
 					}, this.state.loaded || this.props.attachmentLink ? this.renderMessage() : this.renderLoading())
 				}
 			}, () => React.createElement(MaskedLinkComponent, {
-				className: "betterMessageLinks Link mention",
+				className: "betterMessageLinks Link wrapper-1ZcZW- mention interactive",
 				href: this.props.original,
 				children: [messageReplace],
 				onMouseEnter: () => this.setState({ showPopout: true }),
