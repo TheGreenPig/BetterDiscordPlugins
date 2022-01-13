@@ -13,7 +13,7 @@ const config = {
 			"discord_id": "427179231164760066",
 			"github_username": "TheGreenPig"
 		}],
-		"version": "1.4.8",
+		"version": "1.4.9",
 		"description": "Instead of just showing the long and useless discord message link, make it smaller and add a preview. Thanks a ton Strencher for helping me refactor my code and Juby for making the message queueing system. ",
 		"github_raw": "https://raw.githubusercontent.com/TheGreenPig/BetterDiscordPlugins/main/BetterMessageLinks/BetterMessageLinks.plugin.js",
 	},
@@ -22,8 +22,8 @@ const config = {
 			"title": "Fixed",
 			"type": "fixed",
 			"items": [
-				"Fixed `media` discord attachment links from not previewing messages.",
-				"Fixed the Spinners in the settings.",
+				"Fixed message regex so attachment links with a different domain than discord don't get replaced. (Security update)",
+	
 			]
 		},
 	],
