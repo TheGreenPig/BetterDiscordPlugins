@@ -23,7 +23,7 @@ const config = {
 			"type": "fixed",
 			"items": [
 				"Fixed message regex so attachment links with a different domain than discord don't get replaced. (Security update)",
-	
+
 			]
 		},
 	],
@@ -147,7 +147,7 @@ module.exports = !global.ZeresPluginLibrary ? class {
 	}
 	`
 
-	
+
 	const defaultSettings = {
 		ignoreMessage: false,
 		ignoreAttachment: false,
@@ -158,10 +158,12 @@ module.exports = !global.ZeresPluginLibrary ? class {
 		noDisplayIfSameGuild: true,
 		progressBar: true,
 		spinner: 0,
+		mentionStyle: true,
+		animationType: "TRANSLATE",
 		advancedFooter: `$guildName, $channelName at $timestamp`,
 	};
 	const validFooterValues = ["authorName", "guildName", "guildId", "channelName", "channelId", "messageId", "timestamp", "nsfw"]
-	
+
 	//Settings and imports
 	const { Toasts, WebpackModules, Patcher, Settings, DiscordModules, ReactTools, DiscordClasses, DiscordClassModules, Utilities } = { ...BdApi, ...Library };
 	const { SettingPanel, Switch, Slider, RadioGroup, Textbox, SettingGroup } = Settings;
@@ -187,11 +189,37 @@ module.exports = !global.ZeresPluginLibrary ? class {
 	let cache = {};
 	let lastFetch = 0;
 	let linkQueue = [];
-	const spinnerTypes = Object.values(DiscordModules.Spinner.Type)
-	
+	const spinnerTypes = Object.values(DiscordModules.Spinner.Type);
+
+	let spinnerSetting = [];
+	spinnerTypes.forEach((spinnerType, i) => {
+		let name = spinnerType.replace(/([A-Z])/g, " $1");
+		name = name.charAt(0).toUpperCase() + name.slice(1);
+		spinnerSetting.push({
+			name: name,
+			desc: React.createElement(DiscordModules.Spinner, { type: spinnerType },),
+			value: i
+		})
+	})
+
+	const popoutAnimationTypes = Object.keys(Popout.Animation);
+
+	let animationSetting = [];
+	popoutAnimationTypes.forEach((animationType, i) => {
+		let name = animationType.toLowerCase();
+		name = name.charAt(0).toUpperCase() + name.slice(1);
+		animationSetting.push({
+			name: name,
+			desc: "",
+			value: animationType
+		})
+	})
+
+
+
 	async function getMsg(channelId, messageId) {
 		let message = MessageStore.getMessage(channelId, messageId) || cache[messageId]
-		
+
 		if (!message) {
 			if (lastFetch > Date.now() - 2500) await new Promise(r => setTimeout(r, 2500))
 			const data = await DiscordModules.APIModule.get({
@@ -232,6 +260,7 @@ module.exports = !global.ZeresPluginLibrary ? class {
 				linkQueue.forEach(c => {
 					c.setState({ queue: linkQueue })
 				})
+
 				return getMsg(channelId, messageId)
 			}
 		}
@@ -253,10 +282,12 @@ module.exports = !global.ZeresPluginLibrary ? class {
 
 				linkQueue.push(this)
 				this.setState({ originalIndex: linkQueue.length, queue: linkQueue })
-				let message = await getMsgWithQueue(channelId, messageId, this);
+				let message = await getMsgWithQueue(channelId, messageId, this)
+
 				if (!message) return
 				message.guild = guildId ? GetGuildModule.getGuild(guildId) : "@me";
 				this.setState({ loaded: true, message });
+
 			}
 		}
 
@@ -467,7 +498,7 @@ module.exports = !global.ZeresPluginLibrary ? class {
 				shouldShow: this.state.showPopout,
 				position: Popout.Positions.TOP,
 				align: Popout.Align.CENTER,
-				animation: Popout.Animation.TRANSLATE,
+				animation: Popout.Animation[this.props.settings.animationType],
 				spacing: 0,
 				renderPopout: () => {
 					return React.createElement("div", {
@@ -477,7 +508,8 @@ module.exports = !global.ZeresPluginLibrary ? class {
 					}, this.state.loaded || this.props.attachmentLink ? this.renderMessage() : this.renderLoading())
 				}
 			}, () => React.createElement(MaskedLinkComponent, {
-				className: "betterMessageLinks Link wrapper-1ZcZW- mention interactive",
+				className: `betterMessageLinks Link${this.props.settings.mentionStyle ? " wrapper-1ZcZW- mention interactive" : ""}`,
+
 				href: this.props.original,
 				children: [messageReplace],
 				onMouseEnter: () => this.setState({ showPopout: true }),
@@ -529,7 +561,7 @@ module.exports = !global.ZeresPluginLibrary ? class {
 			let isMaskedLink = ret.props.children[0] !== ret.props.href;
 
 			if (/^https:\/\/(ptb.|canary.)?discord(app)?.com\/channels\/(\d+|@me)\/\d+\/\d+$/gi.test(ret.props.href) && !this.settings.ignoreMessage) {
-				return React.createElement(BetterLink, { original: ret.props.href, settings: this.settings, key: config.info.name, replaceOverride: isMaskedLink && ret.props.children[0] })
+				return React.createElement(BetterLink, { original: ret.props.href, settings: this.settings, key: config.info.name, replaceOverride: isMaskedLink && ret.props.children[0]})
 			} else if (/^https:\/\/(media|cdn).discordapp.(com|net)\/attachments\/\d+\/\d+\/.+$/gi.test(ret.props.href) && !this.settings.ignoreAttachment) {
 				return React.createElement(BetterLink, { original: ret.props.href.split("?")[0], settings: this.settings, attachmentLink: true, key: config.info.name, replaceOverride: isMaskedLink && ret.props.children[0] });
 			}
@@ -564,22 +596,18 @@ module.exports = !global.ZeresPluginLibrary ? class {
 				this.settings.noDisplayIfSameGuild = i;
 			})
 			noDisplayIfSameGuildSwitch.inputWrapper.className += " betterMessageLinks Settings noDisplayIfSameGuildSwitch"
-			
-			let spinnerSetting = []
-			spinnerTypes.forEach((spinnerType, i) => {
-				let name = spinnerType.replace(/([A-Z])/g, " $1");
-				name = name.charAt(0).toUpperCase() + name.slice(1);
-				spinnerSetting.push({
-					name: name,
-					desc: React.createElement(DiscordModules.Spinner, { type: spinnerType },),
-					value: i
-				})
-			})
+
+
 
 			let spinnerRadio = new RadioGroup('Spinner', "Choose the spinner that gets displayed when the message is loading", this.settings.spinner || 0, spinnerSetting, (i) => {
 				this.settings.spinner = i;
 			})
 			spinnerRadio.inputWrapper.className += " betterMessageLinks Settings Spinner";
+
+			let animationRadio = new RadioGroup('Popup Animation', "Choose the animation type when the popoup get's opened.", this.settings.animationType || "TRANSLATE", animationSetting, (i) => {
+				this.settings.animationType = i;
+			})
+			animationRadio.inputWrapper.className += " betterMessageLinks Settings Animation";
 
 			let appearanceSettingsGroup = new SettingGroup("Appearance").append(
 				new Switch("Show Author icon", "Display the icon of the Message Author.", this.settings.showAuthorIcon, (i) => {
@@ -593,7 +621,11 @@ module.exports = !global.ZeresPluginLibrary ? class {
 				new Switch("Show progress bar", "Display a circular progress bar when loading a message.", this.settings.progressBar, (i) => {
 					this.settings.progressBar = i;
 				}),
+				new Switch("Style as mention", "Choose if the link should be styled like a mention (Otherwhise it will be styled like a link).", this.settings.mentionStyle, (i) => {
+					this.settings.mentionStyle = i;
+				}),
 				spinnerRadio,
+				animationRadio,
 				new Textbox("Advanced link footer", React.createElement("div", {}, "Add a footer to the popout containing information about the message. Use $value to display specific values. Valid values: ", unorderedList), this.settings.advancedFooter, (i) => {
 					this.settings.advancedFooter = i;
 				}),
