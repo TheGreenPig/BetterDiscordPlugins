@@ -50,7 +50,7 @@ module.exports = !global.ZeresPluginLibrary ? class {
 } : (([Plugin, Library]) => {
 	//Settings and imports
 	const { Toasts, WebpackModules, DCM, Patcher, React, Settings, DiscordClassModules } = { ...BdApi, ...Library };
-	const { SettingPanel, Switch, Slider, RadioGroup, Textbox } = Settings;
+	const { SettingPanel, Switch, Slider, RadioGroup, Textbox, SettingField, SettingGroup } = Settings;
 
 	//Modules
 	const MessageContextMenu = WebpackModules.getModule(m => m?.default?.displayName === "MessageContextMenu");
@@ -60,19 +60,91 @@ module.exports = !global.ZeresPluginLibrary ? class {
 		async onStart() {
 
 		}
+		getSettingsPanel() {
+			let classInfoDiv = document.createElement("div");
+			classInfoDiv.classList = "plugin-input-container";
+			classInfoDiv.style.userSelect = "text";
 
-		onStop() {
+			let classInfoTitle = document.createElement("h5");
+			classInfoTitle.textContent = "Results:";
+			classInfoTitle.classList = DiscordClassModules.Titles.h5
+			classInfoDiv.appendChild(classInfoTitle);
+
+			let classInfoResults = document.createElement("div");
+			classInfoDiv.appendChild(classInfoResults);
+
+			//build the settings pannel
+			return SettingPanel.build(() => this.saveSettings(this.settings),
+				new Textbox("Class converter", "", "", (i) => {
+					let found = this.searchClass(i);
+					classInfoResults.textContent = "";
+
+					if (found && i !== "") {
+						for (const groupResult in found) {
+							let resultGroupNode = document.createElement("div");
+							let resultGroupTitle = document.createElement("label");
+							resultGroupTitle.classList = DiscordClassModules.Dividers.title;
+							resultGroupTitle.textContent = groupResult;
+							let resultList = document.createElement("ul");
+							resultList.classList = "colorStandard-21JIj7 size14-3fJ-ot description-30xx7u formText-2ngGjI modeDefault-2fEh7a"
+							resultList.style.listStyleType = "disc"
+							resultList.style.paddingLeft = "30px"
+
+
+							for (const results in found[groupResult]) {
+								let result = document.createElement("li");
+								result.style.marginBottom = "10px"
+								let resultText = document.createElement("span");
+								resultText.textContent = `${results}: ${found[groupResult][results]}`;
+								let copyButton = document.createElement("button");
+								copyButton.textContent = "Copy";
+
+								Object.assign(copyButton.style, {
+									backgroundColor: "var(--brand-experiment)",
+									color: "var(--text-normal)",
+									padding: "0.3em",
+									fontSize: "0.9em",
+									borderRadius: "5px",
+									marginLeft: "15px",
+								})
+
+								result.appendChild(resultText);
+								result.appendChild(copyButton);
+
+								resultList.appendChild(result);
+							}
+
+							resultGroupNode.appendChild(resultGroupTitle);
+							resultGroupNode.appendChild(resultList);
+							classInfoResults.appendChild(resultGroupNode);
+						}
+					}
+
+				}),
+				classInfoDiv
+			)
 
 		}
+		searchClass(toSearch) {
+			toSearch = toSearch.toLowerCase();
+			let r = Object.assign({}, DiscordClassModules);
+			console.log(r);
+
+			for (const group in DiscordClassModules) {
+				for (const key in DiscordClassModules[group]) {
+					let value = DiscordClassModules[group][key].toLowerCase();
+					if (!value.includes(toSearch) || !key.toLowerCase().includes(toSearch)) {
+						console.log(r[group][key]);
+					}
+				}
+			}
+			return r;
+		}
+
 		observer(changes) {
 			let element = changes.target;
 			switch (element?.tagName) {
 				case "BD-THEMES":
-
-					Array.from(element.children).forEach(style => {
-						this.assignStyle(style);
-					});
-					break;
 				case "BD-STYLES":
 					Array.from(element.children).forEach(style => {
 						this.assignStyle(style);
@@ -113,9 +185,10 @@ module.exports = !global.ZeresPluginLibrary ? class {
 			return style;
 		}
 		async processImports(style) {
+			let importMatches = style.match(/\/\*\s*DiscordClassModules\s*\*\/\s*\n@import url\(.+\);\s*/g);
 			return new Promise((resolve, reject) => {
-				let imports = style.match(/\/\*\s*DiscordClassModules\s*\*\/\s*\n@import url\(.+\);\s*/g)[0]
-				if (imports) {
+				if (importMatches) {
+					let imports = importMatches[0];
 					let url = imports.split("\n")[1].match(/https:\/\/.+\.css/g)[0]
 					fetch(url)
 						.then(data => { return data.text() })
@@ -124,7 +197,7 @@ module.exports = !global.ZeresPluginLibrary ? class {
 						}).catch(error => {
 							reject(error);
 						})
-					
+
 				} else {
 					resolve(style);
 				}
