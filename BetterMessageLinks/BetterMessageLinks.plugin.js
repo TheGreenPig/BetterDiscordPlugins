@@ -4,6 +4,7 @@
  * @updateUrl https://raw.githubusercontent.com/TheGreenPig/BetterDiscordPlugins/main/BetterMessageLinks/BetterMessageLinks.plugin.js
  * @authorLink https://github.com/TheGreenPig
  * @source https://github.com/TheGreenPig/BetterDiscordPlugins/blob/main/BetterMessageLinks/BetterMessageLinks.plugin.js
+ * @invite JsqBVSCugb
  */
 const config = {
 	"info": {

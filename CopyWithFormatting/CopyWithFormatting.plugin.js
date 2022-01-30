@@ -5,6 +5,7 @@
  * @updateUrl https://raw.githubusercontent.com/TheGreenPig/BetterDiscordPlugins/main/CopyWithFormatting/CopyWithFormatting.plugin.js
  * @authorLink https://github.com/TheGreenPig
  * @source https://github.com/TheGreenPig/BetterDiscordPlugins/main/CopyWithFormatting/CopyWithFormatting.plugin.js
+ * @invite JsqBVSCugb
  */
 
 const { appendFile } = require("fs");

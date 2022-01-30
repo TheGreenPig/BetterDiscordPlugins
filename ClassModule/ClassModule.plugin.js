@@ -4,6 +4,7 @@
  * @updateUrl https://raw.githubusercontent.com/TheGreenPig/BetterDiscordPlugins/main/ClassModule/ClassModule.plugin.js
  * @authorLink https://github.com/TheGreenPig
  * @source https://github.com/TheGreenPig/BetterDiscordPlugins/main/ClassModule/ClassModule.plugin.js
+ * @invite JsqBVSCugb
  */
 const config = {
 	"info": {

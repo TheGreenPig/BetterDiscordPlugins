@@ -4,6 +4,7 @@
  * @updateUrl https://raw.githubusercontent.com/TheGreenPig/BetterDiscordPlugins/main/SyncData/SyncData.plugin.js
  * @authorLink https://github.com/TheGreenPig
  * @source https://github.com/TheGreenPig/BetterDiscordPlugins/main/SyncData/SyncData.plugin.js
+ * @invite JsqBVSCugb
  */
  const config = {
 	"info": {

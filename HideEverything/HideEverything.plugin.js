@@ -4,6 +4,7 @@
  * @updateUrl https://raw.githubusercontent.com/TheGreenPig/BetterDiscordPlugins/main/HideEverything/HideEverything.plugin.js
  * @authorLink https://github.com/TheGreenPig
  * @source https://github.com/TheGreenPig/BetterDiscordPlugins/main/HideEverything/HideEverything.plugin.js
+ * @invite JsqBVSCugb
  */
 module.exports = (() => {
 	const config = {
