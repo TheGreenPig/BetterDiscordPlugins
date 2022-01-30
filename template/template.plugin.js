@@ -65,7 +65,6 @@ module.exports = !global.ZeresPluginLibrary ? class {
 	const { SettingPanel, Switch, Slider, RadioGroup, Textbox } = Settings;
 
 	//Modules
-	const MessageContextMenu = WebpackModules.getModule(m => m?.default?.displayName === "MessageContextMenu");
 	const MessageContent = WebpackModules.getModule(m => m.type?.displayName === "MessageContent");
 	//A radio setting
 	const radioOptions = [
@@ -98,7 +97,7 @@ module.exports = !global.ZeresPluginLibrary ? class {
 			//add a MessageContent patcher
 			Patcher.after(config.info.name, MessageContent, "type", (_, [props], ret) => {
 				ret.props.children[0].push(React.createElement("div", {
-					class: "aRedChild",
+					className: "aRedChild",
 					onClick: () => { console.log(`Message with id "${props.message.id}" was clicked!`) }
 				}, "A child was added to this message!")
 				)
