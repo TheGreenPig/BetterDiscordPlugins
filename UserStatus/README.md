@@ -17,5 +17,6 @@ Install this plugin. That's it. It will import `@import url("https://cdn.jsdeliv
   <li>Create plugin so it's not BDFDB dependent and a little more efficient</li>
   <li>Add an easy way to generate and submit an animation (ideally a bot like USRBG does it)</li>
   <li>Improve efficency and do testing with lot's of animations (I suck at css, maybe there's a better way to do it than the way I am currently?)</li>
+  <li>Make sure the status is upated everywhere (in the friends list etc. too), maybe patch the status component instead of adding the class to all the places it's used seperately</li> 
 </ul>
 
