@@ -103,21 +103,6 @@ module.exports = !global.ZeresPluginLibrary ? class {
 				}, "A child was added to this message!")
 				)
 			})
-
-			//add a MessageContextMenu patcher
-			Patcher.after(config.info.name, MessageContextMenu, "default", (_, [props], ret) => {
-				let message = React.createElement("div", {
-					class: "messageClass"
-				}, "This is a cool message!")
-				let contextMenuItem = DCM.buildMenuItem({
-					label: "Click me!",
-					type: "text",
-					action: () => {
-						BdApi.alert("A Title", message)
-					}
-				})
-				ret.props.children.push(contextMenuItem)
-			})
 		}
 		getSettingsPanel() {
 			//build the settings pannel
