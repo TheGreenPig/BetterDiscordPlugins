@@ -14,9 +14,12 @@ Install this plugin. That's it. It will import `@import url("https://cdn.jsdeliv
 ## TODO
 (This is still very early development and I might abandon it at anytime if it's too performance heavy or such)
 <ul>
-  <li>Create plugin so it's not BDFDB dependent and a little more efficient</li>
-  <li>Add an easy way to generate and submit an animation (ideally a bot like USRBG does it)</li>
-  <li>Improve efficency and do testing with lot's of animations (I suck at css, maybe there's a better way to do it than the way I am currently?)</li>
-  <li>Make sure the status is upated everywhere (in the friends list etc. too), maybe patch the status component instead of adding the class to all the places it's used seperately</li> 
+  <li>Patch the status better (aka everywhere)</li>
+<li>Make a way to generate the instructions json file with a ui</li>
+<li>Set up a channel + possibly bot for the status verification process (how to automatically make git pushes with a bot?)</li>
+<li>Possibly move it to it's own repo to not spam commits and bury the updates of other plugins</li>
+<li>Set up good restrictions what the minimum delay of a frame should be, max number of frames etc. </li>
+<li>Set up good rules what should be allowed in the status and what not (should self promotion be allowed for example? Special UTF-8 characters allowed? Lot's of white space allowed?)</li>
+<li>Think about if this is even a good idea or is it just going to turn into a spammy plugin that no one will use?  </li>
 </ul>
 
