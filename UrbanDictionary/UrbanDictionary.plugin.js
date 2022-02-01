@@ -4,7 +4,6 @@
  * @updateUrl https://raw.githubusercontent.com/TheGreenPig/BetterDiscordPlugins/main/UrbanDictionary/UrbanDictionary.plugin.js
  * @authorLink https://github.com/TheGreenPig
  * @source https://github.com/TheGreenPig/BetterDiscordPlugins/main/UrbanDictionary/UrbanDictionary.plugin.js
- * @invite JsqBVSCugb
  */
 const config = {
 	"info": {
@@ -14,10 +13,19 @@ const config = {
 			"discord_id": "427179231164760066",
 			"github_username": "TheGreenPig"
 		}],
-		"version": "1.0.2",
+		"version": "1.1.0",
 		"description": "Display word definitions  by Urban Dictionary. Select a word, right click and press Urban Dictionary to see its definition!",
 		"github_raw": "https://raw.githubusercontent.com/TheGreenPig/BetterDiscordPlugins/main/UrbanDictionary/UrbanDictionary.plugin.js"
 	},
+	"changelog": [
+		{
+			"title": "Fixed",
+			"type": "fixed",
+			"items": [
+				"Fixed context menu",
+			]
+		},
+	],
 }
 module.exports = !global.ZeresPluginLibrary ? class {
 	constructor() { this._config = config; }
@@ -87,12 +95,24 @@ module.exports = !global.ZeresPluginLibrary ? class {
 		margin-top: 20px;
 	}
 	`
-	const { Toasts, WebpackModules, DCM, Patcher, React, Settings } = { ...Library, ...BdApi };
+	const { Toasts, WebpackModules, DCM, Patcher, React, Settings,Logger } = { ...Library, ...BdApi };
 	const { SettingPanel, Switch, Slider, RadioGroup } = Settings;
 
-	const MessageContextMenu = WebpackModules.getModule(m => m?.default?.displayName === "MessageContextMenu")
-	const SlateTextAreaContextMenu = WebpackModules.getModule(m => m?.default?.displayName === "SlateTextAreaContextMenu")
+	const MessageContextMenu = lazyLoadingSmasher9000("MessageContextMenu");
+	const SlateTextAreaContextMenu = lazyLoadingSmasher9000("SlateTextAreaContextMenu");
 
+	//credits to Strencher
+	function lazyLoadingSmasher9000(displayName) {
+		return new Promise(resolve => {
+			const cached = WebpackModules.getModule(m => m && m.default && m.default.displayName === displayName);
+			if (cached) return resolve(cached);
+			const unsubscribe = WebpackModules.addListener(module => {
+			  if (!module.default || module.default.displayName !== displayName) return;
+			  unsubscribe();
+			  resolve(module);
+			});
+		  });
+	}
 	let profanityArray = [];
 
 	const profanityOptions = [
@@ -124,11 +144,12 @@ module.exports = !global.ZeresPluginLibrary ? class {
 
 			BdApi.injectCSS(config.info.name, customCSS)
 
-			Patcher.after(config.info.name, MessageContextMenu, "default", (_, __, ret) => {
+			Patcher.after(config.info.name, await MessageContextMenu, "default", (_, __, ret) => {
+				console.log(ret);
 				ret.props.children.push(this.getContextMenuItem())
 			})
 
-			Patcher.after(config.info.name, SlateTextAreaContextMenu, "default", (_, __, ret) => {
+			Patcher.after(config.info.name, await SlateTextAreaContextMenu, "default", (_, __, ret) => {
 				ret.props.children.push(this.getContextMenuItem())
 			})
 		}
@@ -136,14 +157,16 @@ module.exports = !global.ZeresPluginLibrary ? class {
 			let selection = window.getSelection().toString().trim();
 			if (selection === "") { return; }
 			let word = selection.charAt(0).toUpperCase() + selection.slice(1);
-
+			let obj = {};
 			let ContextMenuItem = DCM.buildMenuItem({
 				label: "Urban Dictionary",
 				type: "text",
 				action: () => {
+					Logger.log(`Fetching "${word}"...`);
 					fetch(`https://api.urbandictionary.com/v0/define?term=${word.toLocaleLowerCase()}`)
 						.then(data => { return data.json() })
 						.then(res => {
+							Logger.log(`Denifitions of "${word}" fetched.`)
 							this.processDefinitions(word, res);
 						})
 				}
@@ -161,7 +184,7 @@ module.exports = !global.ZeresPluginLibrary ? class {
 			}
 
 			if (res?.list?.length === 0) {
-				BdApi.alert("No definiton found!", React.createElement("div", { class: "markdown-11q6EU paragraph-3Ejjt0" }, `Couldn't find `, React.createElement("span", { style: { fontWeight: "bold" } }, `"${word}"`), ` on Urban dictionary.`));//
+				BdApi.alert("No definiton found!", React.createElement("div", { class: "markdown-19oyJN paragraph-9M861H" }, `Couldn't find `, React.createElement("span", { style: { fontWeight: "bold" } }, `"${word}"`), ` on Urban dictionary.`));//
 				return;
 			}
 
