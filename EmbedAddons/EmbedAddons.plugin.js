@@ -285,7 +285,10 @@ module.exports = !global.ZeresPluginLibrary
 									: this.installAddon(),
 						},
 						`${this.state.downloadedAddon ? "Uninstall" : "Download"} ${
-							compactMode ? this.props.name : this.props.type.charAt(0).toUpperCase() + this.props.type.slice(1)
+							compactMode
+								? this.props.name
+								: this.props.type.charAt(0).toUpperCase() +
+								  this.props.type.slice(1)
 						}`
 					);
 				}
@@ -303,7 +306,6 @@ module.exports = !global.ZeresPluginLibrary
 								"s";
 							const fileName = this.props.latest_source_url.split("/").pop();
 
-							console.log(type, fileName);
 							await new Promise((r) =>
 								require("fs").writeFile(
 									require("path").join(BdApi[type].folder, fileName),
@@ -317,11 +319,11 @@ module.exports = !global.ZeresPluginLibrary
 							this.setState({ downloadedAddon: true });
 							if (this.props.settings.autoEnable) {
 								const name = body.match(/@name .+/g)[0].replace("@name ", "");
-								
-								//do three enabling attempts 
-								for(let i =0; i<3; i++) {
+
+								//do three enabling attempts
+								for (let i = 0; i < 3; i++) {
 									setTimeout(() => {
-										if(BdApi[type].get(name)) {
+										if (BdApi[type].get(name)) {
 											BdApi[type].enable(name);
 											return;
 										}
@@ -392,7 +394,7 @@ module.exports = !global.ZeresPluginLibrary
 							let embedMatches = props.message.addonLink
 								? props.message.addonLink
 								: props.message.embeds[0]?.author?.url?.match(
-										/betterdiscord\.app\/(plugin|theme)\?id=\d+/gi
+										/betterdiscord\.app\/(plugin|theme|Download)\?id=\d+/gi
 								  );
 							if (embedMatches) {
 								props.message.addonLink = embedMatches;
@@ -406,12 +408,12 @@ module.exports = !global.ZeresPluginLibrary
 								this.getAddonData(e.split("/"))
 							);
 							addonData = addonData.filter((e) => e);
-
 							//remove the default embed
-							if (!embedCache[props.message.id])
+							if (!embedCache[props.message.id]) {
 								embedCache[props.message.id] = props.message.embeds;
+							}
 
-							removeEmbeds
+							removeEmbeds && embedCache[props.message.id] && addonData.length>0
 								? (props.message.embeds = [])
 								: (props.message.embeds = embedCache[props.message.id]);
 
@@ -420,8 +422,10 @@ module.exports = !global.ZeresPluginLibrary
 									AddonInfoComponent,
 									Object.assign(
 										{
-											compactMode: this.settings.releaseChannel === 0 && isEmbed,
+											compactMode:
+												this.settings.releaseChannel === 0 && isEmbed,
 											settings: this.settings,
+											key: addon.id,
 										},
 										addon
 									)
