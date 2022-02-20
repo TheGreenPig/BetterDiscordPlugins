@@ -4,7 +4,7 @@
  * @updateUrl https://raw.githubusercontent.com/TheGreenPig/BetterDiscordPlugins/main/EmbedAddons/EmbedAddons.plugin.js
  * @authorLink https://github.com/TheGreenPig
  * @source https://github.com/TheGreenPig/BetterDiscordPlugins/blob/main/EmbedAddons/EmbedAddons.plugin.js
- * @version 1.0.1
+ * @version 1.0.2
  */
 const config = {
 	info: {
@@ -16,7 +16,7 @@ const config = {
 				github_username: "TheGreenPig",
 			},
 		],
-		version: "1.0.1",
+		version: "1.0.2",
 		description:
 			"Easily download BetterDiscord addons and see info about it in chat.",
 		github_raw:
@@ -86,68 +86,6 @@ module.exports = !global.ZeresPluginLibrary
 			stop() {}
 	  }
 	: (([Plugin, Library]) => {
-			//Custom css
-			const customCSS = `
-	.EmbedAddons.Container {
-		margin-top: 10px;
-		margin-bottom: 10px;
-		height: fit-content;
-	}
-	.EmbedAddons.ThumbnailContainer.Thumbnail {
-		width: 100%;
-		height: 100%;
-		object-fit: cover;
-		border-radius: 5px;
-	}
-	.EmbedAddons.ThumbnailContainer {
-		height: 200px;
-	}
-	.EmbedAddons.Header {
-		padding-bottom: 10px;
-		display: flex;
-		justify-content: center;
-	}
-	.EmbedAddons.Info {
-		padding: 10px;
-	}
-	.EmbedAddons.Title {
-		color: var(--text-normal);
-		font-weight: bold;
-	}
-	.EmbedAddons.Title:hover {
-		text-decoration: none;
-	}
-	.EmbedAddons.Author {
-		display: flex;
-	}
-	.EmbedAddons.Button {
-		transform: translateY(0);
-		transition: transform .5s cubic-bezier(0.25, 0.1, 0, 2.29);
-	  }
-	.EmbedAddons.Button:active {
-	transform: translateY(5px);
-	}
-	.EmbedAddons.Links {
-		display: flex;
-		justify-content: center;
-		padding: 5px;
-	}
-	/* Css you can use I guess? idk it looks kinda bad...
-	
-	.EmbedAddons.Links.Link {
-		margin-left: 10px;
-		margin-right: 10px;
-		width: 10px;
-		height: 20px;
-		overflow: hidden;
-		transition: width 0.5s ease;
-	}
-	.EmbedAddons.Links.Link:hover {
-		width: 100px;
-	}
-	/*
-	`;
-
 			//Settings and imports
 			const {
 				Toasts,
@@ -159,6 +97,29 @@ module.exports = !global.ZeresPluginLibrary
 				Utilities,
 				DiscordModules,
 			} = { ...BdApi, ...Library };
+			//Custom css
+			const customCSS = `
+			.EmbedAddons.Container {
+				margin-top: 10px;
+				margin-bottom: 10px;
+			}
+			.EmbedAddons.Card{
+				min-height: 350px;
+				max-width: 400px;
+				height: fit-content;
+			}
+			.EmbedAddons.Description {
+				margin: 10px;
+			}
+			.EmbedAddons.Button {
+				margin: 10px;
+				transform: translateY(0);
+				transition: transform .5s cubic-bezier(0.25, 0.1, 0, 2.29);
+			}
+			.EmbedAddons.Button:active {
+				transform: translateY(5px);
+			}
+			`;
 			const { SettingPanel, Switch, Slider, RadioGroup, Textbox } = Settings;
 
 			const releaseChannelRadio = [
@@ -193,6 +154,15 @@ module.exports = !global.ZeresPluginLibrary
 			const MessageContent = WebpackModules.getModule(
 				(m) => m.type?.displayName === "MessageContent"
 			);
+			const GuildDiscoveryClasses = WebpackModules.getModule(
+				(m) => m.cardPlaceholder && m.actionButtons
+			);
+			const GuildDiscoveryCard = WebpackModules.getModule(
+				(m) => m?.default.displayName === "GuildDiscoveryCard"
+			);
+			const DownloadIcon = WebpackModules.findByDisplayName("Download");
+			const HeartIcon = WebpackModules.findByDisplayName("Heart");
+			const Mask = WebpackModules.getModule((m) => m.displayName === "Mask");
 			let addons;
 			let embedCache = {};
 
@@ -213,80 +183,7 @@ module.exports = !global.ZeresPluginLibrary
 							),
 					};
 				}
-				renderHeader() {
-					return React.createElement(
-						"div",
-						{ className: "EmbedAddons Header" },
 
-						React.createElement(
-							"div",
-							{ className: "EmbedAddons Author" },
-							React.createElement(
-								"a",
-								{
-									className: "title-3UXrP6 EmbedAddons Title",
-									href: `https://betterdiscord.app/${this.props.type}?id=${this.props.id}`,
-									title: `https://betterdiscord.app/${this.props.type}?id=${this.props.id}`,
-									target: `_blank`,
-								},
-
-								this.props.name + " "
-							),
-							`by `,
-							React.createElement(
-								"a",
-								{
-									href: `https://github.com/${this.props.author.github_name}`,
-									title: `https://github.com/${this.props.author.github_name}`,
-									target: `_blank`,
-								},
-								this.props.author.display_name
-							)
-						)
-					);
-				}
-				renderImage() {
-					return React.createElement(
-						"div",
-						{ className: "EmbedAddons ThumbnailContainer" },
-						React.createElement(
-							"a",
-							{
-								href: `https://betterdiscord.app/${this.props.type}?id=${this.props.id}`,
-								title: `https://betterdiscord.app/${this.props.type}?id=${this.props.id}`,
-								target: `_blank`,
-							},
-
-							React.createElement("img", {
-								src: `https://betterdiscord.app${this.props.thumbnail_url}`,
-								onError: ({ currentTarget }) => {
-									currentTarget.onerror = null;
-									currentTarget.src =
-										"https://betterdiscord.app/resources/ui/content_thumbnail.svg";
-								},
-								className: "EmbedAddons ThumbnailContainer Thumbnail",
-							})
-						)
-					);
-				}
-				renderInfo() {
-					return React.createElement(
-						"div",
-						{ className: "EmbedAddons Info" },
-						React.createElement("b", {}, "Description: "),
-						this.props.description,
-						React.createElement("br"),
-						React.createElement("b", {}, "Downloads: "),
-						`${this.props.downloads}`.replace(/(\d)(?=(\d{3})+(?!\d))/g, "$1."),
-						React.createElement("br"),
-						React.createElement("b", {}, "Likes: "),
-						`${this.props.likes}`.replace(/(\d)(?=(\d{3})+(?!\d))/g, "$1."),
-						React.createElement("br"),
-						React.createElement("b", {}, "Tags: "),
-						this.props.tags.join(", "),
-						React.createElement("br")
-					);
-				}
 				renderDownload() {
 					const { compactMode } = this.props;
 					const ButtonLooksModule = DiscordModules.ButtonData;
@@ -311,38 +208,7 @@ module.exports = !global.ZeresPluginLibrary
 						}`
 					);
 				}
-				renderLinks() {
-					function CustomLinkComponent(props) {
-						const { text, url, title } = props;
-						return React.createElement(
-							"a",
-							{
-								className: "EmbedAddons Links Link",
-								href: url,
-								title: title,
-								target: `_blank`,
-							},
-							text
-						);
-					}
 
-					return React.createElement(
-						"div",
-						{
-							className: "EmbedAddons Links",
-						},
-						React.createElement(CustomLinkComponent, {
-							text: "👁️ View 👁️",
-							title: `View this ${this.props.type} on the BetterDiscord website`,
-							url: `https://betterdiscord.app/${this.props.type}?id=${this.props.id}`,
-						}),
-						React.createElement(CustomLinkComponent, {
-							text: "📜 Source 📜",
-							title: `View the Github source of this ${this.props.type}`,
-							url: this.props.latest_source_url,
-						})
-					);
-				}
 				installAddon() {
 					request.get(
 						`https://betterdiscord.app/Download?id=${this.props.id}`,
@@ -403,23 +269,170 @@ module.exports = !global.ZeresPluginLibrary
 						console.log(err);
 					}
 				}
+				renderCardHeader() {
+					const {
+						cardHeader,
+						splash,
+						splashImage,
+						guildIcon,
+						iconMask,
+						avatar,
+					} = GuildDiscoveryClasses;
+
+					function Avatar({ githubName }) {
+						return React.createElement(
+							"div",
+							{ className: guildIcon },
+							React.createElement(Mask, {
+								children: React.createElement(
+									"div",
+									{ className: iconMask },
+									React.createElement(
+										Mask,
+										{
+											height: 40,
+											width: 40,
+											mask: Mask.Masks.SQUIRCLE,
+										},
+										React.createElement(
+											"a",
+											{
+												href: `https://github.com/${githubName}`,
+												title: `https://github.com/${githubName}`,
+												target: "_blank",
+											},
+											React.createElement("img", {
+												className: avatar+" EmbedAddons Avatar",
+												src: `https://github.com/${githubName}.png`,
+											})
+										)
+									)
+								),
+								height: 48,
+								width: 48,
+								mask: Mask.Masks.SQUIRCLE,
+							})
+						);
+					}
+					return React.createElement(
+						"div",
+						{ className: cardHeader },
+						React.createElement(
+							"div",
+							{ className: splash },
+							React.createElement("img", {
+								src: `https://betterdiscord.app${this.props.thumbnail_url}`,
+								onError: ({ currentTarget }) => {
+									currentTarget.onerror = null;
+									currentTarget.src =
+										"https://betterdiscord.app/resources/ui/content_thumbnail.svg";
+								},
+								className: splashImage,
+							})
+						),
+						React.createElement(Avatar, {
+							githubName: this.props.author.github_name
+						})
+					);
+				}
+				renderCardInfo() {
+					const {
+						guildInfo,
+						title,
+						guildName,
+						memberInfo,
+						memberCount,
+						description,
+					} = GuildDiscoveryClasses;
+
+					return React.createElement(
+						"div",
+						{
+							className: guildInfo,
+						},
+						React.createElement(
+							"div",
+							{
+								className: title,
+							},
+							React.createElement(
+								"h4",
+								{
+									className: guildName,
+								},
+								this.props.name
+							)
+						),
+						React.createElement(
+							"div",
+							{
+								className: description,
+							},
+							this.props.description
+						),
+						this.renderDownload(),
+						React.createElement(
+							"div",
+							{
+								className: memberInfo,
+							},
+							React.createElement(
+								"div",
+								{
+									className: memberCount,
+								},
+								React.createElement(DownloadIcon, {
+									className: " EmbedAddons DownloadButton",
+								}),
+								React.createElement(
+									"div",
+									{
+										className: "colorHeaderSecondary-g5teka size12-oc4dx4",
+									},
+									`${this.props.downloads
+										.toString()
+										.replace(/(\d)(?=(\d{3})+(?!\d))/g, "$1.")} Downloads`
+								)
+							),
+							React.createElement(
+								"div",
+								{
+									className: memberCount,
+								},
+								React.createElement(HeartIcon, {
+									className: "EmbedAddons LikeButton",
+								}),
+								React.createElement(
+									"div",
+									{
+										className: "colorHeaderSecondary-g5teka size12-oc4dx4",
+									},
+									`${this.props.likes
+										.toString()
+										.replace(/(\d)(?=(\d{3})+(?!\d))/g, "$1.")} Likes`
+								)
+							)
+						)
+					);
+				}
 				render() {
 					const { compactMode } = this.props;
 
+					const { loaded, card } = GuildDiscoveryClasses;
+
 					return compactMode
-						? React.createElement(
-								"div",
-								{ className: `wrapper-3-JZ_Z EmbedAddons Container` },
-								this.renderDownload()
-						  )
+						? this.renderDownload()
 						: React.createElement(
 								"div",
-								{ className: `wrapper-3-JZ_Z EmbedAddons Container` },
-								this.renderHeader(),
-								this.renderImage(),
-								this.renderInfo(),
-								this.renderLinks(),
-								this.renderDownload()
+								{ className: loaded + " EmbedAddons Container" },
+								React.createElement(
+									"div",
+									{
+										className: card + " EmbedAddons Card",
+									},
+									this.renderCardHeader(),
+									this.renderCardInfo()
+								)
 						  );
 				}
 			}
@@ -432,6 +445,7 @@ module.exports = !global.ZeresPluginLibrary
 					BdApi.injectCSS(config.info.name, customCSS);
 
 					addons = await this.getAddonCache();
+
 					//add a MessageContent patcher
 					Patcher.after(MessageContent, "type", (_, [props], ret) => {
 						let removeEmbeds = true;
