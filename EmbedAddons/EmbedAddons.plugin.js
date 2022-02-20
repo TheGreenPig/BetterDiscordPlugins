@@ -4,6 +4,7 @@
  * @updateUrl https://raw.githubusercontent.com/TheGreenPig/BetterDiscordPlugins/main/EmbedAddons/EmbedAddons.plugin.js
  * @authorLink https://github.com/TheGreenPig
  * @source https://github.com/TheGreenPig/BetterDiscordPlugins/blob/main/EmbedAddons/EmbedAddons.plugin.js
+ * @version 1.0.1
  */
 const config = {
 	info: {
@@ -123,10 +124,28 @@ module.exports = !global.ZeresPluginLibrary
 		transform: translateY(0);
 		transition: transform .5s cubic-bezier(0.25, 0.1, 0, 2.29);
 	  }
-	  .EmbedAddons.Button:active {
-		transform: translateY(5px);
-	  }
-
+	.EmbedAddons.Button:active {
+	transform: translateY(5px);
+	}
+	.EmbedAddons.Links {
+		display: flex;
+		justify-content: center;
+		padding: 5px;
+	}
+	/* Css you can use I guess? idk it looks kinda bad...
+	
+	.EmbedAddons.Links.Link {
+		margin-left: 10px;
+		margin-right: 10px;
+		width: 10px;
+		height: 20px;
+		overflow: hidden;
+		transition: width 0.5s ease;
+	}
+	.EmbedAddons.Links.Link:hover {
+		width: 100px;
+	}
+	/*
 	`;
 
 			//Settings and imports
@@ -292,6 +311,38 @@ module.exports = !global.ZeresPluginLibrary
 						}`
 					);
 				}
+				renderLinks() {
+					function CustomLinkComponent(props) {
+						const { text, url, title } = props;
+						return React.createElement(
+							"a",
+							{
+								className: "EmbedAddons Links Link",
+								href: url,
+								title: title,
+								target: `_blank`,
+							},
+							text
+						);
+					}
+
+					return React.createElement(
+						"div",
+						{
+							className: "EmbedAddons Links",
+						},
+						React.createElement(CustomLinkComponent, {
+							text: "👁️ View 👁️",
+							title: `View this ${this.props.type} on the BetterDiscord website`,
+							url: `https://betterdiscord.app/${this.props.type}?id=${this.props.id}`,
+						}),
+						React.createElement(CustomLinkComponent, {
+							text: "📜 Source 📜",
+							title: `View the Github source of this ${this.props.type}`,
+							url: this.props.latest_source_url,
+						})
+					);
+				}
 				installAddon() {
 					request.get(
 						`https://betterdiscord.app/Download?id=${this.props.id}`,
@@ -367,6 +418,7 @@ module.exports = !global.ZeresPluginLibrary
 								this.renderHeader(),
 								this.renderImage(),
 								this.renderInfo(),
+								this.renderLinks(),
 								this.renderDownload()
 						  );
 				}
@@ -413,7 +465,9 @@ module.exports = !global.ZeresPluginLibrary
 								embedCache[props.message.id] = props.message.embeds;
 							}
 
-							removeEmbeds && embedCache[props.message.id] && addonData.length>0
+							removeEmbeds &&
+							embedCache[props.message.id] &&
+							addonData.length > 0
 								? (props.message.embeds = [])
 								: (props.message.embeds = embedCache[props.message.id]);
 
