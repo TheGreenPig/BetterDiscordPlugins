@@ -17,7 +17,7 @@ module.exports = (() => {
 					github_username: "TheGreenPig",
 				},
 			],
-			version: "1.0.3",
+			version: "1.0.4",
 			description: "View Pdf and other files directly in Discord.",
 			github_raw:
 				"https://raw.githubusercontent.com/TheGreenPig/BetterDiscordPlugins/main/FileViewer/FileViewer.plugin.js",
@@ -26,12 +26,10 @@ module.exports = (() => {
 			{
 				title: "Added",
 				type: "added",
-				items: ["Resizable window."],
-			},
-			{
-				title: "Fixed",
-				type: "fixed",
-				items: ["Correct eye icon color."],
+				items: [
+					"Support for some 3D model filetypes (stl, obj, vf, vsj, vsb, 3mf)",
+					"odt files",
+				],
 			},
 		],
 	};
@@ -128,8 +126,10 @@ module.exports = (() => {
 						"docx",
 						"xls",
 						"xlsx",
+						"odt",
 					];
 					const googleExtensions = ["pdf"];
+					const objectExtensions = ["stl", "obj", "vf", "vsj", "vsb", "3mf"];
 					class FileViewerButton extends React.Component {
 						state = { displayingFile: false };
 						render() {
@@ -205,19 +205,30 @@ module.exports = (() => {
 									let isOfficeExtension = officeExtensions.some((e) => {
 										return fileUrl.endsWith(e);
 									});
-									if (!isGoogleExtension && !isOfficeExtension) {
+									let isOjectExtension = objectExtensions.some((e) => {
+										return fileUrl.endsWith(e);
+									});
+									if (
+										!isGoogleExtension &&
+										!isOfficeExtension &&
+										!isOjectExtension
+									) {
 										return;
 									}
 
 									let googleUrl = `https://drive.google.com/viewerng/viewer?embedded=true&url=${fileUrl}`;
 									let officeUrl = `https://view.officeapps.live.com/op/view.aspx?src=${fileUrl}`;
-
+									let objectUrl = `https://www.viewstl.com/?embedded&url=${fileUrl}`;
 									let useGoogleProvider =
 										this.settings.forceProvider || isGoogleExtension;
 
 									let button = React.createElement(FileViewerButton, {
 										displayingFile: false,
-										url: useGoogleProvider ? googleUrl : officeUrl,
+										url: isOjectExtension
+											? objectUrl
+											: useGoogleProvider
+											? googleUrl
+											: officeUrl,
 										width: "100%",
 										height: "600px",
 									});
