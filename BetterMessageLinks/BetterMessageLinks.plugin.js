@@ -6,7 +6,7 @@
  * @source https://github.com/TheGreenPig/BetterDiscordPlugins/blob/main/BetterMessageLinks/BetterMessageLinks.plugin.js
  * @invite JsqBVSCugb
  */
-const config = {
+ const config = {
 	"info": {
 		"name": "BetterMessageLinks",
 		"authors": [{
@@ -14,7 +14,7 @@ const config = {
 			"discord_id": "427179231164760066",
 			"github_username": "TheGreenPig"
 		}],
-		"version": "1.4.9",
+		"version": "1.4.10",
 		"description": "Instead of just showing the long and useless discord message link, make it smaller and add a preview. Thanks a ton Strencher for helping me refactor my code and Juby for making the message queueing system. ",
 		"github_raw": "https://raw.githubusercontent.com/TheGreenPig/BetterDiscordPlugins/main/BetterMessageLinks/BetterMessageLinks.plugin.js",
 	},
@@ -23,8 +23,7 @@ const config = {
 			"title": "Fixed",
 			"type": "fixed",
 			"items": [
-				"Fixed message regex so attachment links with a different domain than discord don't get replaced. (Security update)",
-
+				"Fixed crashing issue when previewing links to bots",
 			]
 		},
 	],
@@ -181,7 +180,7 @@ module.exports = !global.ZeresPluginLibrary ? class {
 	const Timestamp = WebpackModules.find(m => m.prototype && m.prototype.toDate && m.prototype.month)
 	const { stringify } = WebpackModules.getByProps('stringify', 'parse', 'encode');
 	const ImagePlaceHolder = WebpackModules.findByDisplayName("ImagePlaceholder");
-	const BotTag = WebpackModules.findByDisplayName("BotTag");
+	const BotTag = WebpackModules.getByProps("BotTagTypes").default;
 	const Popout = WebpackModules.getByDisplayName("Popout");
 	const RenderMessageMarkupToASTModule = WebpackModules.getByProps("renderMessageMarkupToAST");
 	const RepliedMessage = WebpackModules.getModule(m => m && m.default && m.default.displayName == "RepliedMessage");
