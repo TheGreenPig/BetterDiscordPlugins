@@ -124,6 +124,8 @@ module.exports = (() => {
 						"xls",
 						"xlsx",
 						"odt",
+						"ods",
+						"odp",
 					];
 					const googleExtensions = ["pdf"];
 					const objectExtensions = ["stl", "obj", "vf", "vsj", "vsb", "3mf"];
