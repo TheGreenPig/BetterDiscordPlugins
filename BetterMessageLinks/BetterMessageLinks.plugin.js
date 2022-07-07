@@ -14,7 +14,7 @@
 			"discord_id": "427179231164760066",
 			"github_username": "TheGreenPig"
 		}],
-		"version": "1.4.11",
+		"version": "1.4.12",
 		"description": "Instead of just showing the long and useless discord message link, make it smaller and add a preview. Thanks a ton Strencher for helping me refactor my code and Juby for making the message queueing system. ",
 		"github_raw": "https://raw.githubusercontent.com/TheGreenPig/BetterDiscordPlugins/main/BetterMessageLinks/BetterMessageLinks.plugin.js",
 	},
@@ -23,7 +23,7 @@
 			"title": "Fixed",
 			"type": "fixed",
 			"items": [
-				"Removed usage of eval()",
+				"Fixed crashing issue",
 			]
 		},
 	],
@@ -165,17 +165,14 @@ module.exports = !global.ZeresPluginLibrary ? class {
 	const validFooterValues = ["authorName", "guildName", "guildId", "channelName", "channelId", "messageId", "timestamp", "nsfw"]
 
 	//Settings and imports
-	const { Toasts, WebpackModules, Patcher, Settings, DiscordModules, ReactTools, DiscordClasses, DiscordClassModules, Utilities } = { ...BdApi, ...Library };
+	const { WebpackModules, Patcher, Settings, DiscordModules } = { ...BdApi, ...Library };
 	const { SettingPanel, Switch, Slider, RadioGroup, Textbox, SettingGroup } = Settings;
 	/**@type {typeof import("react")} */
 	const React = DiscordModules.React;
 	//Modules
-	const MessageContent = WebpackModules.getModule(m => m.type?.displayName === "MessageContent");
-	// const MessageStore = DiscordModules.MessageStore;
 	const MessageStore = WebpackModules.getByProps("hasCurrentUserSentMessage", "getMessage");
 	const GetGuildModule = DiscordModules.GuildStore;
 	const GetChannelModule = DiscordModules.ChannelStore;
-	const TooltipWrapper = WebpackModules.getByPrototypes("renderTooltip");
 	const User = WebpackModules.find(m => m.prototype && m.prototype.tag);
 	const Timestamp = WebpackModules.find(m => m.prototype && m.prototype.toDate && m.prototype.month)
 	const { stringify } = WebpackModules.getByProps('stringify', 'parse', 'encode');
@@ -185,7 +182,7 @@ module.exports = !global.ZeresPluginLibrary ? class {
 	const RenderMessageMarkupToASTModule = WebpackModules.getByProps("renderMessageMarkupToAST");
 	const RepliedMessage = WebpackModules.getModule(m => m && m.default && m.default.displayName == "RepliedMessage");
 	const MarkdownModule = WebpackModules.getByProps("parseTopic");
-	const MaskedLinkComponent = WebpackModules.findByDisplayName("MaskedLink");
+	const Anchor = WebpackModules.findByDisplayName("Anchor");
 	let cache = {};
 	let lastFetch = 0;
 	let linkQueue = [];
@@ -520,7 +517,7 @@ module.exports = !global.ZeresPluginLibrary ? class {
 						onMouseLeave: () => this.setState({ showPopout: false })
 					}, this.state.loaded || this.props.attachmentLink ? this.renderMessage() : this.renderLoading())
 				}
-			}, () => React.createElement(MaskedLinkComponent, {
+			}, () => React.createElement(Anchor, {
 				className: `betterMessageLinks Link${this.props.settings.mentionStyle ? " wrapper-1ZcZW- mention interactive" : ""}`,
 
 				href: this.props.original,
