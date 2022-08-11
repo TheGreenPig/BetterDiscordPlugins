@@ -17,7 +17,7 @@ module.exports = (() => {
 					github_username: "TheGreenPig",
 				},
 			],
-			version: "1.0.5",
+			version: "1.0.6",
 			description: "View Pdf and other files directly in Discord.",
 			github_raw:
 				"https://raw.githubusercontent.com/TheGreenPig/BetterDiscordPlugins/main/FileViewer/FileViewer.plugin.js",
@@ -26,7 +26,10 @@ module.exports = (() => {
 			{
 				title: "Fixed",
 				type: "fixed",
-				items: ["Ignore case sensitivity in file extensions."],
+				items: [
+					"Fix preview icon not being added",
+					"Save preview size when opening and closing preview",
+				],
 			},
 		],
 	};
@@ -36,7 +39,7 @@ module.exports = (() => {
 			overflow: auto;
 			padding: 10px;
 			max-width: 100%;
-			min-width: 100px;
+			min-width: 300px;
 			max-height: 80vh;
 			min-height: 100px;
 		}
@@ -94,14 +97,18 @@ module.exports = (() => {
 		  }
 		: (([Plugin, Api]) => {
 				const plugin = (Plugin, Library) => {
-					const { Patcher, React, Settings } = { ...Api, ...BdApi };
-					const { SettingPanel, Switch, Textbox } = Settings;
+					const { Patcher, React, Settings, Utilities, Webpack } = {
+						...Api,
+						...BdApi,
+					};
+					const { SettingPanel, Switch } = Settings;
 
 					const Attachment = BdApi.findModule(
 						(m) => m.default?.displayName === "Attachment"
 					);
-					const TooltipContainer =
-						BdApi.findModuleByProps("TooltipContainer").TooltipContainer;
+					const TooltipContainer = BdApi.findModule(
+						Webpack.Filters.byProps("TooltipContainer")
+					).TooltipContainer;
 					//Thanks Dastan21 for the icons <3
 					const ShowIcon = React.createElement("path", {
 						fill: "currentColor",
@@ -128,7 +135,10 @@ module.exports = (() => {
 					const googleExtensions = ["pdf"];
 					const objectExtensions = ["stl", "obj", "vf", "vsj", "vsb", "3mf"];
 					class FileViewerButton extends React.Component {
-						state = { displayingFile: false };
+						state = {
+							displayingFile: false,
+							size: { width: 450, height: 500 },
+						};
 						render() {
 							let button = React.createElement(
 								TooltipContainer,
@@ -146,25 +156,42 @@ module.exports = (() => {
 												return;
 											}
 
-											this.setState({
-												displayingFile: !this.state.displayingFile,
-												url: this.state.url,
-											});
 											let attachmentElement = e.target.closest(
 												`div[class^="messageAttachment"]`
 											);
+
+											this.setState({
+												displayingFile: !this.state.displayingFile,
+												size: { width: 450, height: 500 },
+											});
+											let embed;
 											if (!this.state.displayingFile) {
-												let embed = document.createElement("iframe");
+												embed = document.createElement("iframe");
 												embed.setAttribute("class", "FileViewerEmbed");
 												embed.setAttribute("src", this.props.url);
-												embed.setAttribute("width", this.props.width);
-												embed.setAttribute("height", this.props.height);
+												embed.setAttribute("width", this.state.size.width);
+												embed.setAttribute("height", this.state.size.height);
 
 												attachmentElement.appendChild(embed);
 											} else {
-												let embed = attachmentElement.lastChild;
-												if (embed) embed.remove();
+												embed = attachmentElement.querySelector(".FileViewerEmbed");
+												const size = {};
+												["width", "height"].forEach((key) => {
+													size[key] = parseInt(
+														embed.style[key].replace("px", "") ||
+															embed.getAttribute(key)
+													);
+												});
+												this.setState({
+													displayingFile: false,
+													size: size,
+												});
+												embed.remove();
 											}
+											//necessary for the x button for multiple files to be displayed correctly... couldn't think of a better solution
+											attachmentElement.style.flexWrap = this.state.displayingFile
+												? "nowrap"
+												: "wrap";
 										},
 									},
 									this.state.displayingFile ? HideIcon : ShowIcon
@@ -188,13 +215,11 @@ module.exports = (() => {
 								Attachment,
 								"default",
 								(_, __, ret) => {
-									if (
-										ret.props?.children?.length === 0 ||
-										!ret.props.children[2]?.props?.href
-									) {
-										return;
-									}
-									const fileUrl = ret.props.children[2]?.props?.href;
+									const fileUrl = Utilities.findInReactTree(
+										ret.props,
+										(e) => e?.href
+									).href;
+									if (!fileUrl) return;
 
 									let isGoogleExtension = googleExtensions.some((e) => {
 										return fileUrl.toLowerCase().endsWith(e);
@@ -226,8 +251,6 @@ module.exports = (() => {
 											: useGoogleProvider
 											? googleUrl
 											: officeUrl,
-										width: "100%",
-										height: "600px",
 									});
 									//check for supported file type
 
@@ -252,8 +275,8 @@ module.exports = (() => {
 											)
 										);
 									}
-									ret.props.children = [
-										...ret.props.children,
+									ret.props.children[0].props.children = [
+										...ret.props.children[0].props.children,
 										button,
 										warningIcon,
 									];
