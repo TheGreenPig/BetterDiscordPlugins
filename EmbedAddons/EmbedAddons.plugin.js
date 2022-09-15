@@ -313,10 +313,11 @@ module.exports = !global.ZeresPluginLibrary
 								src: `https://betterdiscord.app${this.props.thumbnail_url}`,
 								onError: ({ currentTarget }) => {
 									currentTarget.onerror = null;
-									currentTarget.src =
-										"https://betterdiscord.app/resources/ui/content_thumbnail.svg";
+									currentTarget.style.objectFit = "contain";
+									currentTarget.src = "https://betterdiscord.app/resources/ui/content_thumbnail.svg";
 								},
 								className: splashImage,
+								style: { height: "200px" },
 							})
 						),
 						React.createElement(Avatar, {
