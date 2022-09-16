@@ -4,7 +4,7 @@
  * @updateUrl https://raw.githubusercontent.com/TheGreenPig/BetterDiscordPlugins/main/EmbedAddons/EmbedAddons.plugin.js
  * @authorLink https://github.com/TheGreenPig
  * @source https://github.com/TheGreenPig/BetterDiscordPlugins/blob/main/EmbedAddons/EmbedAddons.plugin.js
- * @version 1.0.2
+ * @version 1.0.3
  */
 const config = {
 	info: {
@@ -16,7 +16,7 @@ const config = {
 				github_username: "TheGreenPig",
 			},
 		],
-		version: "1.0.2",
+		version: "1.0.3",
 		description:
 			"Easily download BetterDiscord addons and see info about it in chat.",
 		github_raw:
@@ -88,13 +88,10 @@ module.exports = !global.ZeresPluginLibrary
 	: (([Plugin, Library]) => {
 			//Settings and imports
 			const {
-				Toasts,
 				WebpackModules,
-				DCM,
 				Patcher,
 				React,
 				Settings,
-				Utilities,
 				DiscordModules,
 			} = { ...BdApi, ...Library };
 			//Custom css
@@ -103,7 +100,7 @@ module.exports = !global.ZeresPluginLibrary
 				margin-top: 10px;
 				margin-bottom: 10px;
 			}
-			.EmbedAddons.Card{
+			.EmbedAddons.Card {
 				min-height: 350px;
 				max-width: 400px;
 				height: fit-content;
@@ -112,7 +109,7 @@ module.exports = !global.ZeresPluginLibrary
 				margin: 10px;
 			}
 			.EmbedAddons.Button {
-				margin: 10px;
+				margin: 10px 0;
 				transform: translateY(0);
 				transition: transform .5s cubic-bezier(0.25, 0.1, 0, 2.29);
 			}
@@ -120,7 +117,7 @@ module.exports = !global.ZeresPluginLibrary
 				transform: translateY(5px);
 			}
 			`;
-			const { SettingPanel, Switch, Slider, RadioGroup, Textbox } = Settings;
+			const { SettingPanel, Switch, RadioGroup } = Settings;
 
 			const releaseChannelRadio = [
 				{
@@ -146,19 +143,11 @@ module.exports = !global.ZeresPluginLibrary
 				releaseChannel: 1,
 			};
 			//Modules
-			const Message = WebpackModules.getByProps(
-				"default",
-				"ThreadStarterChatMessage",
-				"getElementFromMessageId"
-			);
 			const MessageContent = WebpackModules.getModule(
 				(m) => m.type?.displayName === "MessageContent"
 			);
 			const GuildDiscoveryClasses = WebpackModules.getModule(
 				(m) => m.cardPlaceholder && m.actionButtons
-			);
-			const GuildDiscoveryCard = WebpackModules.getModule(
-				(m) => m?.default.displayName === "GuildDiscoveryCard"
 			);
 			const DownloadIcon = WebpackModules.findByDisplayName("Download");
 			const HeartIcon = WebpackModules.findByDisplayName("Heart");
@@ -316,7 +305,7 @@ module.exports = !global.ZeresPluginLibrary
 					}
 					return React.createElement(
 						"div",
-						{ className: cardHeader },
+						{ className: cardHeader, style: { height: "200px", marginBottom: "16px" } },
 						React.createElement(
 							"div",
 							{ className: splash },
@@ -324,10 +313,11 @@ module.exports = !global.ZeresPluginLibrary
 								src: `https://betterdiscord.app${this.props.thumbnail_url}`,
 								onError: ({ currentTarget }) => {
 									currentTarget.onerror = null;
-									currentTarget.src =
-										"https://betterdiscord.app/resources/ui/content_thumbnail.svg";
+									currentTarget.style.objectFit = "contain";
+									currentTarget.src = "https://betterdiscord.app/resources/ui/content_thumbnail.svg";
 								},
 								className: splashImage,
+								style: { height: "200px" },
 							})
 						),
 						React.createElement(Avatar, {
@@ -367,6 +357,7 @@ module.exports = !global.ZeresPluginLibrary
 							"div",
 							{
 								className: description,
+								style: { margin: "4px 0 0 0" }
 							},
 							this.props.description
 						),
