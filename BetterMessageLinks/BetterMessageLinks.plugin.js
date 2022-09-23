@@ -493,6 +493,8 @@ module.exports = !global.ZeresPluginLibrary ? class {
 			let { settings } = this.props;
 			let attachmentLink = this.props.attachmentLink;
 
+			const { message } = this.state;
+
 			let messageReplace = this.props.original;
 			if (!this.props.replaceOverride) {
 				if (settings.messageReplaceText !== "" && !attachmentLink) {
@@ -521,7 +523,7 @@ module.exports = !global.ZeresPluginLibrary ? class {
 				className: `betterMessageLinks Link${this.props.settings.mentionStyle ? " wrapper-1ZcZW- mention interactive" : ""}`,
 
 				href: this.props.original,
-				children: [messageReplace],
+				children: [(message === null) ? messageReplace : `Message: ${message.author.username} in ${message.guild.name} at ${new Date(message.timestamp).toLocaleString()}`],
 				onMouseEnter: () => this.setState({ showPopout: true }),
 				onMouseLeave: () => this.setState({ showPopout: false })
 			}))
