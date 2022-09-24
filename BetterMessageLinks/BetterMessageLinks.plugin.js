@@ -574,9 +574,7 @@ module.exports = !global.ZeresPluginLibrary ? class {
 
 			if (/^https:\/\/(ptb.|canary.)?discord(app)?.com\/channels\/(\d+|@me)\/\d+\/\d+$/gi.test(ret.props.href) && !this.settings.ignoreMessage) {
 				return React.createElement(BetterLink, { original: ret.props.href, settings: this.settings, key: config.info.name, replaceOverride: isMaskedLink && ret.props.children[0]})
-			} else if (/^https:\/\/(media|cdn).discordapp.(com|net)\/attachments\/\d+\/\d+\/.+$/gi.test(ret.props.href) && !this.settings.ignoreAttachment) {
-				return React.createElement(BetterLink, { original: ret.props.href.split("?")[0], settings: this.settings, attachmentLink: true, key: config.info.name, replaceOverride: isMaskedLink && ret.props.children[0] });
-			}
+			} 
 			return ret;
 		}
 
