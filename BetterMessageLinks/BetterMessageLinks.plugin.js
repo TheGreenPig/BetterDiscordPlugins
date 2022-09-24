@@ -523,7 +523,7 @@ module.exports = !global.ZeresPluginLibrary ? class {
 				className: `betterMessageLinks Link${this.props.settings.mentionStyle ? " wrapper-1ZcZW- mention interactive" : ""}`,
 
 				href: this.props.original,
-				children: [(message === null) ? messageReplace : `Message: ${message.author.username} in ${message.guild.name} at ${new Date(message.timestamp).toLocaleString()}`],
+				children: [(message === null) ? messageReplace : (message.guild === null || message.guild === undefined) ? `Message: You do not have access to the guild or channel this message is in!` : `Message: ${(message.author === undefined || message.author === null) ? "Unknown User" : message.author.username} in ${message.guild.name} at ${new Date(message.timestamp).toLocaleString()}`],
 				onMouseEnter: () => this.setState({ showPopout: true }),
 				onMouseLeave: () => this.setState({ showPopout: false })
 			}))
