@@ -5,6 +5,7 @@
  * @authorLink https://github.com/TheGreenPig
  * @source https://github.com/TheGreenPig/BetterDiscordPlugins/main/FileViewer/FileViewer.plugin.js
  * @invite JsqBVSCugb
+ * @version 2.0.0
  */
 module.exports = (() => {
 	const config = {
