@@ -5,6 +5,7 @@
  * @authorLink https://github.com/TheGreenPig
  * @source https://github.com/TheGreenPig/BetterDiscordPlugins/blob/main/BetterMessageLinks/BetterMessageLinks.plugin.js
  * @invite JsqBVSCugb
+ * @version 1.5.0
  */
  const config = {
 	"info": {
@@ -14,7 +15,7 @@
 			"discord_id": "427179231164760066",
 			"github_username": "TheGreenPig"
 		}],
-		"version": "1.4.12",
+		"version": "1.5.0",
 		"description": "Instead of just showing the long and useless discord message link, make it smaller and add a preview. Thanks a ton Strencher for helping me refactor my code and Juby for making the message queueing system. ",
 		"github_raw": "https://raw.githubusercontent.com/TheGreenPig/BetterDiscordPlugins/main/BetterMessageLinks/BetterMessageLinks.plugin.js",
 	},
@@ -23,7 +24,7 @@
 			"title": "Fixed",
 			"type": "fixed",
 			"items": [
-				"Fixed crashing issue",
+				"Should mostly be functional again",
 			]
 		},
 	],
@@ -165,7 +166,7 @@ module.exports = !global.ZeresPluginLibrary ? class {
 	const validFooterValues = ["authorName", "guildName", "guildId", "channelName", "channelId", "messageId", "timestamp", "nsfw"]
 
 	//Settings and imports
-	const { WebpackModules, Patcher, Settings, DiscordModules } = { ...BdApi, ...Library };
+	const { WebpackModules, Patcher, Settings, DiscordModules, Webpack:{Filters:{byStrings}} } = { ...BdApi, ...Library };
 	const { SettingPanel, Switch, Slider, RadioGroup, Textbox, SettingGroup } = Settings;
 	/**@type {typeof import("react")} */
 	const React = DiscordModules.React;
@@ -176,17 +177,17 @@ module.exports = !global.ZeresPluginLibrary ? class {
 	const User = WebpackModules.find(m => m.prototype && m.prototype.tag);
 	const Timestamp = WebpackModules.find(m => m.prototype && m.prototype.toDate && m.prototype.month)
 	const { stringify } = WebpackModules.getByProps('stringify', 'parse', 'encode');
-	const ImagePlaceHolder = WebpackModules.findByDisplayName("ImagePlaceholder");
-	const BotTag = WebpackModules.getByProps("BotTagTypes").default;
-	const Popout = WebpackModules.getByDisplayName("Popout");
-	const RenderMessageMarkupToASTModule = WebpackModules.getByProps("renderMessageMarkupToAST");
+	const ImagePlaceHolder = WebpackModules.getModule(byStrings("M6 2C3.79086"));
+	const BotTag = WebpackModules.getModule(byStrings("botTag"));
+	const Popout = WebpackModules.getByProps("Positions", "Align", "Animation", "defaultProps");
 	const RepliedMessage = WebpackModules.getModule(m => m && m.default && m.default.displayName == "RepliedMessage");
 	const MarkdownModule = WebpackModules.getByProps("parseTopic");
-	const Anchor = WebpackModules.findByDisplayName("Anchor");
+	const Anchor = WebpackModules.getModule(byStrings("anchorUnderlineOnHover", "noreferrer noopener"));
+	const Spinner = WebpackModules.getModule(byStrings("WANDERING_CUBES", "CHASING_DOTS", "LOADING"));
 	let cache = {};
 	let lastFetch = 0;
 	let linkQueue = [];
-	const spinnerTypes = Object.values(DiscordModules.Spinner.Type);
+	const spinnerTypes = Object.values(Spinner.Type);
 
 	let spinnerSetting = [];
 	spinnerTypes.forEach((spinnerType, i) => {
@@ -194,7 +195,7 @@ module.exports = !global.ZeresPluginLibrary ? class {
 		name = name.charAt(0).toUpperCase() + name.slice(1);
 		spinnerSetting.push({
 			name: name,
-			desc: React.createElement(DiscordModules.Spinner, { type: spinnerType },),
+			desc: React.createElement(Spinner, { type: spinnerType },),
 			value: i
 		})
 	})
@@ -216,11 +217,10 @@ module.exports = !global.ZeresPluginLibrary ? class {
 
 	async function getMsg(channelId, messageId) {
 		let message = MessageStore.getMessage(channelId, messageId) || cache[messageId]
-
 		if (!message) {
 			if (lastFetch > Date.now() - 2500) await new Promise(r => setTimeout(r, 2500))
 			const data = await DiscordModules.APIModule.get({
-				url: DiscordModules.DiscordConstants.Endpoints.MESSAGES(channelId),
+				url: `/channels/${channelId}/messages`,
 				query: stringify({
 					limit: 1,
 					around: messageId
@@ -293,7 +293,7 @@ module.exports = !global.ZeresPluginLibrary ? class {
 			return React.createElement("div", { className: "betterMessageLinks AlignMiddle Loading" },
 				React.createElement("span", { className: "betterMessageLinks AlignMiddle Loading Text" }, `Loading ... ${loadedPercent}%`),
 				React.createElement("span", { className: "betterMessageLinks AlignMiddle Loading Spinner" },
-					React.createElement(DiscordModules.Spinner, { type: spinnerTypes[this.props.settings.spinner] })
+					React.createElement(Spinner, { type: spinnerTypes[this.props.settings.spinner] })
 				),
 			)
 
@@ -340,7 +340,7 @@ module.exports = !global.ZeresPluginLibrary ? class {
 			if (this.props.attachmentLink) {
 				content = this.props.original.split("/").pop();
 			} else {
-				content = this.processNewLines(RenderMessageMarkupToASTModule.default(Object.assign({}, message), { renderMediaEmbeds: true, formatInline: false, isInteracting: true }).content);
+				content = MarkdownModule.parse(message.content);
 			}
 
 			return React.createElement("span", {
@@ -400,12 +400,12 @@ module.exports = !global.ZeresPluginLibrary ? class {
 			let nsfw = channel?.nsfw;
 
 			if (channel) {
-				if (channel?.type === DiscordModules.DiscordConstants.ChannelTypes.DM) {
+				if (channel?.type === 1) {
 					guildName = "DM";
 					guildId = "@me";
 					channelName = channel.rawRecipients[0].username;
 				}
-				else if (channel?.type === DiscordModules.DiscordConstants.ChannelTypes.GROUP_DM) {
+				else if (channel?.type === 2) {
 					guildName = "DMs"
 					guildId = "@me";
 					channelName = channel.rawRecipients.map((e) => e.username).slice(0, 3).join("-");
