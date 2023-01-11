@@ -3,7 +3,7 @@
  * @author AGreenPig
  * @updateUrl https://raw.githubusercontent.com/TheGreenPig/BetterDiscordPlugins/main/FileViewer/FileViewer.plugin.js
  * @authorLink https://github.com/TheGreenPig
- * @source https://github.com/TheGreenPig/BetterDiscordPlugins/main/FileViewer/FileViewer.plugin.js
+ * @source https://github.com/TheGreenPig/BetterDiscordPlugins/tree/main/FileViewer
  * @invite JsqBVSCugb
  * @version 2.0.0
  */
